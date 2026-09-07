@@ -1,18 +1,42 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { EyeIcon, EyeOffIcon, LockIcon, LogInIcon, UserIcon } from '../../../components/icons'
 import { Button } from '../../../components/ui/Button'
 import { Checkbox } from '../../../components/ui/Checkbox'
 import { TextField } from '../../../components/ui/TextField'
+import { guardarSesion, type Sesion } from '../../../lib/session'
 
 export function LoginForm() {
+  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    // TODO: integrar con el servicio de autenticación institucional
+    setError(null)
+    setLoading(true)
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: username, password }),
+      })
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(body?.error ?? 'No se pudo iniciar sesión')
+      }
+      const sesion = (await response.json()) as Sesion
+      guardarSesion(sesion, rememberMe)
+      navigate('/monitoreo')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -80,8 +104,10 @@ export function LoginForm() {
             </a>
           </div>
 
-          <Button type="submit">
-            Ingresar al sistema
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Ingresando…' : 'Ingresar al sistema'}
             <LogInIcon className="h-4 w-4" />
           </Button>
         </form>

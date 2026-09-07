@@ -1,8 +1,12 @@
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { WebAnalyzerCard } from '../components/WebAnalyzerCard'
 import { ValidationQueue } from '../components/ValidationQueue'
+import { useFuentes } from '../hooks/useFuentes'
 
 export function NewsPage() {
+  const { fuentes, analizar } = useFuentes()
+  const fuentesEnProceso = fuentes.filter((f) => f.estado === 'procesando' || f.estado === 'fallida')
+
   return (
     <DashboardLayout title="Sistema de Detección de Pesca Ilegal" searchPlaceholder="Buscar...">
       <div className="h-full overflow-y-auto p-6">
@@ -13,8 +17,8 @@ export function NewsPage() {
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-          <WebAnalyzerCard />
-          <ValidationQueue />
+          <WebAnalyzerCard onAnalizar={analizar} />
+          <ValidationQueue fuentesEnProceso={fuentesEnProceso} />
         </div>
       </div>
     </DashboardLayout>

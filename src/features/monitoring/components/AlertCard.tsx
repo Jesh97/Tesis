@@ -4,9 +4,9 @@ interface AlertCardProps {
   vessel: string
   matricula: string
   description: string
-  speedKnots: number
-  headingDegrees: number
-  heading: string
+  speedKnots?: number
+  headingDegrees?: number
+  heading?: string
   latitude: string
   longitude: string
   onClose?: () => void
@@ -26,7 +26,7 @@ export function AlertCard({
   onRegister,
 }: AlertCardProps) {
   return (
-    <div className="absolute top-4 right-4 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+    <div className="absolute top-4 right-4 z-[1000] w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
       <div className="flex items-center justify-between border-b border-red-100 bg-red-50 px-4 py-2.5">
         <div className="flex items-center gap-2 text-sm font-semibold text-red-700">
           <AlertTriangleIcon className="h-4 w-4" />
@@ -55,14 +55,14 @@ export function AlertCard({
             <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">Velocidad</p>
             <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-slate-700">
               <GaugeIcon className="h-3.5 w-3.5 text-slate-400" />
-              {speedKnots} nds
+              {speedKnots != null ? `${speedKnots} nds` : 'N/D'}
             </p>
           </div>
           <div>
             <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">Rumbo</p>
             <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-slate-700">
               <CompassIcon className="h-3.5 w-3.5 text-slate-400" />
-              {headingDegrees}° {heading}
+              {headingDegrees != null ? `${headingDegrees}° ${heading ?? ''}` : 'N/D'}
             </p>
           </div>
           <div>

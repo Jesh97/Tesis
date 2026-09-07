@@ -12,8 +12,11 @@ import type { LambayequeVessel } from '../hooks/useLambayequeVessels'
 // solo para visualizar la extensión del área de vigilancia sobre el mapa.
 // El borde hacia tierra sigue la costa real (LAMBAYEQUE_COASTLINE); el
 // borde hacia el mar son dos puntos fijos bien mar adentro.
-const mapCenter: [number, number] = [-6.9, -80.35]
-const mapZoom = 9
+// El mapa arranca mostrando todo el litoral peruano (no solo Lambayeque):
+// las embarcaciones con incidentes confirmados (cargar_incidentes_csv.py)
+// operan en alta mar/EEZ a lo largo de toda la costa, no en esta bahía.
+const mapCenter: [number, number] = [-10, -78.5]
+const mapZoom = 6
 const jurisdiction: [number, number][] = [
   ...[...LAMBAYEQUE_COASTLINE].reverse(), // norte -> sur, siguiendo la costa real
   [-7.1, -81.3], // sur, mar adentro
@@ -93,10 +96,11 @@ function ZoomControls() {
 
 interface MapViewProps {
   vessels?: LambayequeVessel[]
+  mmsiConIncidente?: Set<string>
   children?: ReactNode
 }
 
-export function MapView({ vessels = [], children }: MapViewProps) {
+export function MapView({ vessels = [], mmsiConIncidente, children }: MapViewProps) {
   return (
     <div className="relative h-full w-full overflow-hidden">
       <MapContainer
@@ -130,21 +134,31 @@ export function MapView({ vessels = [], children }: MapViewProps) {
 
         {/* CircleMarker (canvas) en vez de Marker/divIcon: con miles de barcos
             a escala nacional, un elemento DOM por punto vuelve el mapa lento. */}
-        {vessels.map((vessel, index) => (
-          <CircleMarker
-            key={`${vessel.embarcacionId ?? vessel.mmsi ?? 'v'}-${index}`}
-            center={[vessel.lat, vessel.lon]}
-            radius={3}
-            pathOptions={{ color: '#0f766e', fillColor: '#0f766e', fillOpacity: 0.85, weight: 1 }}
-          >
-            <Tooltip direction="top" offset={[0, -4]}>
-              <strong>{vessel.nombre}</strong>
-              {vessel.mmsi ? ` · MMSI ${vessel.mmsi}` : ''}
-              <br />
-              {vessel.horas.toFixed(1)} h de pesca aparente
-            </Tooltip>
-          </CircleMarker>
-        ))}
+        {vessels.map((vessel, index) => {
+          const conIncidente = Boolean(vessel.mmsi && mmsiConIncidente?.has(vessel.mmsi))
+          const color = conIncidente ? '#dc2626' : '#0f766e'
+          return (
+            <CircleMarker
+              key={`${vessel.embarcacionId ?? vessel.mmsi ?? 'v'}-${index}`}
+              center={[vessel.lat, vessel.lon]}
+              radius={conIncidente ? 4 : 3}
+              pathOptions={{ color, fillColor: color, fillOpacity: 0.85, weight: 1 }}
+            >
+              <Tooltip direction="top" offset={[0, -4]}>
+                <strong>{vessel.nombre}</strong>
+                {vessel.mmsi ? ` · MMSI ${vessel.mmsi}` : ''}
+                <br />
+                {vessel.horas.toFixed(1)} h de pesca aparente
+                {conIncidente && (
+                  <>
+                    <br />
+                    <span style={{ color: '#dc2626', fontWeight: 600 }}>Con incidente confirmado</span>
+                  </>
+                )}
+              </Tooltip>
+            </CircleMarker>
+          )
+        })}
 
         <Marker position={portLabel.position} icon={placeLabelIcon} />
 

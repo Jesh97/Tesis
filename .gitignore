@@ -20,6 +20,10 @@ dist-ssr
 .venv*
 __pycache__
 *.pyc
+.pytest_cache
+
+# Datos pesados (modelo entrenado + datasets): no caben en GitHub sin Git LFS
+datos/
 
 # Editor directories and files
 .vscode/*

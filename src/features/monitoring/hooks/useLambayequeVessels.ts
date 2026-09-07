@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../../../lib/api'
 
 export interface LambayequeVessel {
   embarcacionId: string | null
@@ -18,37 +19,48 @@ interface LambayequeResponse {
   barcos: LambayequeVessel[]
 }
 
-/** Barcos detectados por Global Fishing Watch frente a la costa de Lambayeque (últimos 7 días). */
-export function useLambayequeVessels() {
+/**
+ * Barcos reportados por Global Fishing Watch en el mar peruano para un rango
+ * de fechas. GFW no da datos en tiempo real: su dataset público de esfuerzo
+ * pesquero se completa retroactivamente durante semanas/meses, así que los
+ * últimos días casi siempre vienen vacíos (ver desde/hasta para elegir una
+ * ventana con mejor cobertura).
+ */
+export function useLambayequeVessels(desde?: string, hasta?: string) {
   const [vessels, setVessels] = useState<LambayequeVessel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const controller = new AbortController()
+    let ignore = false
 
     async function load() {
       setLoading(true)
       setError(null)
       try {
-        const response = await fetch('/api/embarcaciones/gfw/lambayeque', { signal: controller.signal })
+        const params = new URLSearchParams()
+        if (desde) params.set('desde', desde)
+        if (hasta) params.set('hasta', hasta)
+        const query = params.toString()
+        const response = await apiFetch(`/api/embarcaciones/gfw/lambayeque${query ? `?${query}` : ''}`)
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as { error?: string } | null
           throw new Error(body?.error ?? `Error ${response.status} al consultar embarcaciones`)
         }
         const data = (await response.json()) as LambayequeResponse
-        setVessels(data.barcos)
+        if (!ignore) setVessels(data.barcos)
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return
-        setError(err instanceof Error ? err.message : 'Error desconocido')
+        if (!ignore) setError(err instanceof Error ? err.message : 'Error desconocido')
       } finally {
-        setLoading(false)
+        if (!ignore) setLoading(false)
       }
     }
 
     void load()
-    return () => controller.abort()
-  }, [])
+    return () => {
+      ignore = true
+    }
+  }, [desde, hasta])
 
   return { vessels, loading, error }
 }

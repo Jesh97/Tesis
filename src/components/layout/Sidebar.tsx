@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { ReportarIncidenteModal } from '../../features/incidents/components/ReportarIncidenteModal'
+import { cerrarSesion } from '../../lib/session'
 import {
   AlertTriangleIcon,
   AnchorIcon,
@@ -7,6 +9,7 @@ import {
   HelpCircleIcon,
   LayoutGridIcon,
   LogOutIcon,
+  MapPinIcon,
   RssIcon,
 } from '../icons'
 
@@ -19,11 +22,20 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Monitoreo', to: '/monitoreo', icon: <LayoutGridIcon className="h-4 w-4" /> },
   { label: 'Incidentes', to: '/incidentes', icon: <AlertTriangleIcon className="h-4 w-4" /> },
+  { label: 'Zonas', to: '/zonas', icon: <MapPinIcon className="h-4 w-4" /> },
   { label: 'Noticias', to: '/noticias', icon: <RssIcon className="h-4 w-4" /> },
   { label: 'Reportes', to: '/reportes', icon: <FileTextIcon className="h-4 w-4" /> },
 ]
 
 export function Sidebar() {
+  const navigate = useNavigate()
+  const [mostrarReportar, setMostrarReportar] = useState(false)
+
+  function handleLogout() {
+    cerrarSesion()
+    navigate('/', { replace: true })
+  }
+
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
       <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
@@ -56,7 +68,10 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col gap-3 p-3">
-        <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-700 px-4 py-3 text-sm font-semibold tracking-wide text-white uppercase transition-colors hover:bg-red-800">
+        <button
+          onClick={() => setMostrarReportar(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-700 px-4 py-3 text-sm font-semibold tracking-wide text-white uppercase transition-colors hover:bg-red-800"
+        >
           <AlertTriangleIcon className="h-4 w-4" />
           Reportar incidencia
         </button>
@@ -66,12 +81,17 @@ export function Sidebar() {
             <HelpCircleIcon className="h-4 w-4" />
             Ayuda
           </button>
-          <button className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100"
+          >
             <LogOutIcon className="h-4 w-4" />
             Cerrar Sesión
           </button>
         </div>
       </div>
+
+      {mostrarReportar && <ReportarIncidenteModal onClose={() => setMostrarReportar(false)} />}
     </aside>
   )
 }

@@ -1,10 +1,39 @@
+import { useState } from 'react'
 import { InboxIcon } from '../../../components/icons'
-import { processingItems, validationItems } from '../data/mockValidationItems'
+import type { Fuente } from '../hooks/useFuentes'
+import { useSugerencias } from '../hooks/useSugerencias'
 import { ProcessingRow } from './ProcessingRow'
 import { ValidationCard } from './ValidationCard'
 
-export function ValidationQueue() {
-  const pendingCount = validationItems.length + processingItems.length
+export function ValidationQueue({ fuentesEnProceso }: { fuentesEnProceso: Fuente[] }) {
+  const { sugerencias, loading, error, aprobar, rechazar } = useSugerencias()
+  const [accionId, setAccionId] = useState<string | null>(null)
+  const [errorAccion, setErrorAccion] = useState<string | null>(null)
+  const pendingCount = sugerencias.length + fuentesEnProceso.length
+
+  async function handleAprobar(id: string) {
+    setAccionId(id)
+    setErrorAccion(null)
+    try {
+      await aprobar(id)
+    } catch (err) {
+      setErrorAccion(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setAccionId(null)
+    }
+  }
+
+  async function handleRechazar(id: string) {
+    setAccionId(id)
+    setErrorAccion(null)
+    try {
+      await rechazar(id)
+    } catch (err) {
+      setErrorAccion(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setAccionId(null)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -18,11 +47,23 @@ export function ValidationQueue() {
         </span>
       </div>
 
-      {validationItems.map((item) => (
-        <ValidationCard key={item.id} item={item} />
+      {error && <p className="text-sm text-red-600">No se pudo cargar la cola: {error}</p>}
+      {errorAccion && <p className="text-sm text-red-600">{errorAccion}</p>}
+      {!loading && !error && pendingCount === 0 && (
+        <p className="text-sm text-slate-500">No hay sugerencias pendientes de validación.</p>
+      )}
+
+      {sugerencias.map((item) => (
+        <ValidationCard
+          key={item.id}
+          item={item}
+          procesando={accionId === item.id}
+          onAprobar={() => void handleAprobar(item.id)}
+          onRechazar={() => void handleRechazar(item.id)}
+        />
       ))}
 
-      {processingItems.map((item) => (
+      {fuentesEnProceso.map((item) => (
         <ProcessingRow key={item.id} item={item} />
       ))}
     </div>

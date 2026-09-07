@@ -3,9 +3,42 @@ import { CircleDotIcon, PlayIcon, SparklesIcon } from '../../../components/icons
 
 const urlLimit = 10
 
-export function WebAnalyzerCard() {
+interface WebAnalyzerCardProps {
+  onAnalizar: (urls: string[]) => Promise<void>
+}
+
+export function WebAnalyzerCard({ onAnalizar }: WebAnalyzerCardProps) {
   const [urls, setUrls] = useState('')
-  const urlCount = urls.split('\n').filter((line) => line.trim().length > 0).length
+  const [error, setError] = useState<string | null>(null)
+  const [enviando, setEnviando] = useState(false)
+
+  const listaUrls = urls
+    .split('\n')
+    .map((linea) => linea.trim())
+    .filter((linea) => linea.length > 0)
+  const urlCount = listaUrls.length
+
+  async function handleIniciar() {
+    setError(null)
+    if (listaUrls.length === 0) {
+      setError('Ingrese al menos una URL')
+      return
+    }
+    if (listaUrls.length > urlLimit) {
+      setError(`Máximo ${urlLimit} URLs por lote`)
+      return
+    }
+
+    setEnviando(true)
+    try {
+      await onAnalizar(listaUrls)
+      setUrls('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,9 +73,16 @@ export function WebAnalyzerCard() {
           </span>
         </div>
 
-        <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+
+        <button
+          type="button"
+          onClick={() => void handleIniciar()}
+          disabled={enviando}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <PlayIcon className="h-4 w-4" />
-          Iniciar Análisis
+          {enviando ? 'Enviando…' : 'Iniciar Análisis'}
         </button>
       </div>
 

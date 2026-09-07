@@ -1,24 +1,3 @@
-"""
-Consulta el esfuerzo pesquero de Global Fishing Watch frente a la costa de
-Lambayeque. Dos modos:
-
-  - Por defecto: guarda (upsert) los resultados en Postgres
-    (embarcaciones + esfuerzo_pesquero_gfw). Requiere DATABASE_URL.
-  - Con --json: solo imprime los barcos como JSON en stdout y NO toca la
-    base de datos — útil mientras no haya Postgres configurado. Es el modo
-    que usa server/src/routes/embarcaciones.ts para servirle datos en vivo
-    al mapa de Monitoreo del frontend.
-
-Uso:
-    python scripts/sync_lambayeque.py
-    python scripts/sync_lambayeque.py --desde 2023-01-01 --hasta 2023-01-08
-    python scripts/sync_lambayeque.py --json --desde 2023-01-01 --hasta 2023-01-08
-
-Variables de entorno (se leen de server/.env):
-    GFW_API_TOKEN   token de Global Fishing Watch (siempre requerido)
-    DATABASE_URL    cadena de conexión de Postgres (solo si no se usa --json)
-"""
-
 import argparse
 import json
 import os
@@ -35,9 +14,15 @@ load_dotenv(ENV_FILE)
 API_URL = "https://gateway.api.globalfishingwatch.org/v3/4wings/report"
 DATASET = "public-global-fishing-effort:latest"
 
-# Cobertura aproximada del mar frente a Lambayeque — coincide con el
-# polígono de "jurisdicción marítima" dibujado en MapView.tsx del frontend.
-LAMBAYEQUE_BBOX = [-81.6, -7.15, -79.75, -6.3]  # lon_min, lat_min, lon_max, lat_max
+# Cobertura por defecto cuando no se pasa --geojson: la jurisdicción marítima
+# de la región Lambayeque completa (no solo el puerto de Pimentel puntual, ni
+# todo el Perú) -- objetivo general de la tesis. Cubre la costa de Lambayeque
+# (aprox. límite con Piura al norte hasta límite con La Libertad al sur) más
+# ~200mn mar adentro, porque las embarcaciones con incidentes confirmados
+# (ver cargar_incidentes_csv.py) operan en alta mar/EEZ, no solo en la bahía.
+# Aproximado a partir de la extensión geográfica de la región -- no es el
+# límite oficial de jurisdicción de la Capitanía de Puerto (DICAPI).
+LAMBAYEQUE_BBOX = [-83.5, -7.2, -79.6, -6.0]  # lon_min, lat_min, lon_max, lat_max
 
 
 def construir_geojson_bbox(bbox: list[float]) -> dict:
@@ -54,7 +39,7 @@ def construir_geojson_bbox(bbox: list[float]) -> dict:
     }
 
 
-def obtener_barcos_lambayeque(token: str, desde: str, hasta: str) -> list[dict]:
+def obtener_barcos_en_zona(token: str, desde: str, hasta: str, geojson: dict) -> list[dict]:
     params = {
         # HIGH = celdas de ~0.01° (~1 km). LOW (~0.1°, ~11 km) agrupa demasiados
         # barcos en muy pocas coordenadas y se ve como una rejilla irreal en el mapa.
@@ -65,7 +50,7 @@ def obtener_barcos_lambayeque(token: str, desde: str, hasta: str) -> list[dict]:
         "date-range": f"{desde},{hasta}",
         "format": "JSON",
     }
-    body = {"geojson": construir_geojson_bbox(LAMBAYEQUE_BBOX)}
+    body = {"geojson": geojson}
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -172,9 +157,14 @@ def main():
     hoy = date.today()
     hace_una_semana = hoy - timedelta(days=7)
 
-    parser = argparse.ArgumentParser(description="Consulta embarcaciones GFW frente a Lambayeque")
+    parser = argparse.ArgumentParser(description="Consulta embarcaciones GFW en la jurisdicción marítima de Lambayeque (o en un polígono arbitrario)")
     parser.add_argument("--desde", default=hace_una_semana.isoformat())
     parser.add_argument("--hasta", default=hoy.isoformat())
+    parser.add_argument(
+        "--geojson",
+        default=None,
+        help="Polígono GeoJSON (string JSON) a consultar; por defecto usa el bbox de la jurisdicción de Lambayeque",
+    )
     parser.add_argument(
         "--json",
         action="store_true",
@@ -190,8 +180,10 @@ def main():
     if not token:
         raise SystemExit(f"Falta GFW_API_TOKEN en {ENV_FILE}")
 
-    log(f"Consultando GFW frente a Lambayeque ({args.desde} a {args.hasta})...")
-    barcos = obtener_barcos_lambayeque(token, args.desde, args.hasta)
+    geojson = json.loads(args.geojson) if args.geojson else construir_geojson_bbox(LAMBAYEQUE_BBOX)
+
+    log(f"Consultando GFW ({args.desde} a {args.hasta})...")
+    barcos = obtener_barcos_en_zona(token, args.desde, args.hasta, geojson)
     log(f"Barcos detectados: {len(barcos)}")
 
     if not barcos:

@@ -64,6 +64,10 @@ CREATE TABLE zonas (
   nombre varchar(100) NOT NULL,
   region varchar(100) NOT NULL,
   es_critica boolean NOT NULL DEFAULT false,
+  -- Polígono GeoJSON (coordenadas ingresadas manualmente en el sistema) usado
+  -- para consultar el 4Wings Report de GFW y detectar embarcaciones dentro de
+  -- la zona (patrón "zona_protegida" de detección de irregularidades).
+  poligono jsonb,
   creado_en timestamptz NOT NULL DEFAULT now(),
   UNIQUE (nombre, region)
 );
