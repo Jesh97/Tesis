@@ -5,15 +5,21 @@ from ..gfw import consultar_actividad_con_cache, consultar_gfw_con_cache, consul
 
 router = APIRouter()
 
-DEMO_DESDE = "2023-01-01"
-DEMO_HASTA = "2023-01-08"
+# Misma ventana ya verificada con datos reales de GFW para el bbox de
+# Lambayeque que usa MonitoringPage.tsx (RANGO_POR_DEFECTO): un rango de un
+# mes de enero (el default anterior) es de antes de que el bbox se acotara a
+# Lambayeque y no devuelve embarcaciones para esta región -- ver el
+# comentario en MonitoringPage.tsx para el detalle de por qué se eligió este
+# rango específico.
+DEMO_DESDE = "2023-06-01"
+DEMO_HASTA = "2023-09-01"
 
 # apagon_ais/demora_puerto se calculan sobre huecos/rachas de varios días:
 # una semana no alcanza para que el percentil de la flota tenga sentido, así
-# que esta ruta usa por defecto un rango de un mes (también sobreescribible
-# con ?desde=&hasta=).
-ACTIVIDAD_DEMO_DESDE = "2023-01-01"
-ACTIVIDAD_DEMO_HASTA = "2023-02-01"
+# que esta ruta usa por defecto un rango de varios meses (también
+# sobreescribible con ?desde=&hasta=) -- la misma ventana verificada de arriba.
+ACTIVIDAD_DEMO_DESDE = "2023-06-01"
+ACTIVIDAD_DEMO_HASTA = "2023-09-01"
 
 
 def zonas_criticas() -> list[dict]:

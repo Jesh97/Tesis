@@ -14,11 +14,17 @@
 -- "esfuerzo_pesquero_gfw" guarda las filas agregadas del 4Wings Report
 -- (horas de pesca por celda/periodo) para estadística, no para alertas.
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto; -- gen_random_uuid()
+-- Habilita gen_random_uuid(): genera automáticamente el "id" de cada tabla
+-- (un código único tipo "a1b2c3d4-..." en vez de un número correlativo 1,2,3...).
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- =========================================================
 -- Tipos enumerados
 -- =========================================================
+-- Un ENUM es una lista cerrada de valores válidos para una columna: Postgres
+-- rechaza cualquier valor que no esté en la lista (ej: no se puede insertar
+-- rol='invitado' porque no está en rol_usuario). Reemplaza a poner el valor
+-- como texto libre, que permitiría errores de tipeo o valores inventados.
 
 CREATE TYPE rol_usuario AS ENUM ('administrador', 'supervisor', 'analista');
 
@@ -107,6 +113,10 @@ CREATE TABLE embarcaciones (
   capturada_en timestamptz,
   creado_en timestamptz NOT NULL DEFAULT now(),
 
+  -- Un CHECK es una regla que Postgres verifica en cada INSERT/UPDATE; si no
+  -- se cumple, rechaza la operación. Esta en particular exige que la fila
+  -- tenga AL MENOS UNO de estos 4 campos con valor (el OR no exige los 4 a
+  -- la vez) -- no puede quedar una embarcación totalmente sin identificar.
   CONSTRAINT chk_embarcacion_tiene_identidad
     CHECK (mmsi IS NOT NULL OR imo IS NOT NULL OR matricula IS NOT NULL OR gfw_vessel_id IS NOT NULL)
 );
@@ -140,7 +150,12 @@ CREATE TABLE eventos_gfw (
   payload_raw jsonb NOT NULL,                 -- respuesta cruda de la API, para trazabilidad/reproceso
 
   estado estado_sugerencia NOT NULL DEFAULT 'pendiente',
-  incidente_id uuid,                          -- FK diferida a incidentes (se agrega más abajo)
+  -- Va a apuntar a incidentes(id), pero la tabla "incidentes" TODAVÍA no
+  -- existe en este punto del script (se crea más abajo) -- no se puede hacer
+  -- REFERENCES a una tabla que no existe. Por eso esta columna se crea aquí
+  -- "suelta" (sin REFERENCES) y la relación real se agrega después con un
+  -- ALTER TABLE, una vez que "incidentes" ya existe (buscar "fk_eventos_gfw_incidente").
+  incidente_id uuid,
   creado_en timestamptz NOT NULL DEFAULT now()
 );
 
@@ -185,7 +200,11 @@ CREATE TABLE esfuerzo_pesquero_gfw (
   payload_raw jsonb NOT NULL,
   creado_en timestamptz NOT NULL DEFAULT now(),
 
-  -- clave natural para upsert idempotente al reingestar el mismo reporte
+  -- UNIQUE con 5 columnas juntas = la combinación completa de esas 5 no se
+  -- puede repetir (cada una sola sí puede repetirse). Sirve para poder volver
+  -- a cargar el mismo reporte de GFW sin duplicar filas: si ya existe una fila
+  -- con exactamente esos 5 valores, el INSERT ON CONFLICT (en el script de
+  -- ingesta) actualiza esa fila en vez de crear una nueva.
   UNIQUE (gfw_vessel_id, entry_timestamp, exit_timestamp, latitud, longitud)
 );
 
@@ -203,7 +222,7 @@ CREATE TABLE alertas_monitoreo (
   origen_evento_gfw_id uuid REFERENCES eventos_gfw (id),
   descripcion text NOT NULL,
   velocidad_nudos numeric(5, 1),
-  rumbo_grados smallint CHECK (rumbo_grados BETWEEN 0 AND 360),
+  rumbo_grados smallint CHECK (rumbo_grados BETWEEN 0 AND 360), -- 0-360°, como una brújula
   latitud numeric(9, 6) NOT NULL,
   longitud numeric(9, 6) NOT NULL,
   estado estado_alerta NOT NULL DEFAULT 'activa',
@@ -217,6 +236,8 @@ CREATE INDEX idx_alertas_embarcacion ON alertas_monitoreo (embarcacion_id);
 -- Incidentes (IncidentsPage / registro central)
 -- =========================================================
 
+-- Contador propio para el código de incidente (ver el trigger más abajo:
+-- "fn_generar_codigo_incidente" es quien realmente lo usa).
 CREATE SEQUENCE incidentes_codigo_seq;
 
 CREATE TABLE incidentes (
@@ -231,7 +252,7 @@ CREATE TABLE incidentes (
   latitud numeric(9, 6),
   longitud numeric(9, 6),
   velocidad_nudos numeric(5, 1),
-  rumbo_grados smallint CHECK (rumbo_grados BETWEEN 0 AND 360),
+  rumbo_grados smallint CHECK (rumbo_grados BETWEEN 0 AND 360), -- 0-360°, como una brújula
   fecha_deteccion timestamptz NOT NULL DEFAULT now(),
   registrado_por uuid REFERENCES usuarios (id),
   origen_alerta_id uuid REFERENCES alertas_monitoreo (id),
@@ -244,14 +265,28 @@ CREATE INDEX idx_incidentes_gravedad ON incidentes (gravedad);
 CREATE INDEX idx_incidentes_zona ON incidentes (zona_id);
 CREATE INDEX idx_incidentes_tipo_infraccion ON incidentes (tipo_infraccion_id);
 
--- Cierra la referencia diferida desde eventos_gfw.incidente_id (la tabla
--- eventos_gfw se crea antes que incidentes, así que la FK se agrega aquí).
+-- Recién aquí se puede completar la relación: "incidentes" ya existe, así que
+-- se le agrega a eventos_gfw.incidente_id la restricción FOREIGN KEY que no
+-- se pudo poner arriba (ver el comentario en esa columna).
 ALTER TABLE eventos_gfw
   ADD CONSTRAINT fk_eventos_gfw_incidente FOREIGN KEY (incidente_id) REFERENCES incidentes (id);
 
 CREATE INDEX idx_eventos_gfw_incidente ON eventos_gfw (incidente_id);
 
--- Autogenera "INC-<año>-<correlativo>" cuando no se envía código explícito
+-- Los siguientes 3 bloques (SEQUENCE + FUNCTION + TRIGGER) trabajan juntos
+-- para autogenerar el "codigo" (ej: INC-2026-003) sin que el backend tenga
+-- que calcularlo:
+--   1. La SEQUENCE (arriba, "incidentes_codigo_seq") es solo un contador que
+--      Postgres incrementa de a uno cada vez que se le pide el siguiente
+--      número (1, 2, 3, ...) -- nunca repite un número, ni con inserciones
+--      simultáneas.
+--   2. La FUNCTION define QUÉ hacer: si el INSERT no trajo un "codigo" ya
+--      armado (NEW.codigo IS NULL), lo arma juntando "INC-" + el año actual
+--      + el siguiente número de la secuencia relleno con ceros (lpad a 3
+--      dígitos: 3 -> "003").
+--   3. El TRIGGER es lo que CONECTA la función a la tabla: "BEFORE INSERT"
+--      significa que Postgres corre esta función automáticamente justo antes
+--      de guardar cada fila nueva en incidentes, sin que nadie la llame a mano.
 CREATE OR REPLACE FUNCTION fn_generar_codigo_incidente()
 RETURNS trigger AS $$
 BEGIN
@@ -286,6 +321,11 @@ CREATE INDEX idx_fuentes_estado ON fuentes_noticias (estado);
 
 CREATE TABLE incidentes_sugeridos_ia (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- ON DELETE CASCADE: si se borra la fuente de noticias, sus sugerencias se
+  -- borran automáticamente con ella (sin esto, Postgres impediría borrar la
+  -- fuente mientras tenga sugerencias asociadas). Es la ÚNICA relación de
+  -- todo el esquema con este comportamiento -- en el resto, borrar el "padre"
+  -- simplemente falla si tiene filas hijas dependiendo de él.
   fuente_id uuid NOT NULL REFERENCES fuentes_noticias (id) ON DELETE CASCADE,
   titular text NOT NULL,
   resumen text,
@@ -325,6 +365,10 @@ GROUP BY 1
 ORDER BY 1;
 
 -- Tipos de Infracciones (donut + leyenda con porcentaje)
+-- "OVER ()" (sin nada adentro) = súmalo entre TODAS las filas del resultado,
+-- no por grupo -- así cada fila puede mostrar "mi total" Y "el total general"
+-- al mismo tiempo, algo que un GROUP BY normal no puede hacer solo.
+-- NULLIF(x, 0) evita dividir entre cero (si todavía no hay ningún incidente).
 CREATE OR REPLACE VIEW vw_tipos_infraccion_resumen AS
 SELECT
   ti.nombre,
@@ -337,6 +381,8 @@ GROUP BY ti.id, ti.nombre, ti.color_indicador
 ORDER BY total DESC;
 
 -- Zonas con Mayor Incidencia (ranking)
+-- rank() OVER (ORDER BY ...) numera cada fila según su posición (1°, 2°, 3°...)
+-- sin necesidad de calcularlo a mano en el backend.
 CREATE OR REPLACE VIEW vw_zonas_top AS
 SELECT
   z.nombre,

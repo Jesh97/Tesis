@@ -8,6 +8,11 @@ export interface DatosReporteManual {
   mmsi?: string
   vessel?: string
   fecha?: string
+  // Traídos por el botón "Buscar en GFW" a partir del mmsi/nombre.
+  lat?: number
+  lon?: number
+  bandera?: string
+  vesselType?: string
 }
 
 /** "Reportar incidencia" (sidebar): registra un incidente manual, elegido a

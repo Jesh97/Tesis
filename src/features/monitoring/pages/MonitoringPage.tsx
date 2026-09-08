@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { Button } from '../../../components/ui/Button'
-import { TextField } from '../../../components/ui/TextField'
-import { CalendarIcon } from '../../../components/icons'
+import { ReportarIncidenteModal } from '../../incidents/components/ReportarIncidenteModal'
+import { useZonas } from '../../zones/hooks/useZonas'
 import { AlertCard } from '../components/AlertCard'
 import { MapView } from '../components/MapView'
 import { useActividadSospechosaAlertas } from '../hooks/useActividadSospechosaAlertas'
 import { useLambayequeVessels } from '../hooks/useLambayequeVessels'
 import { useMmsiConIncidente } from '../hooks/useMmsiConIncidente'
-import { useRegistrarIncidente, type TipoAlerta } from '../hooks/useRegistrarIncidente'
+import type { TipoAlerta } from '../types'
 import { useZonaProtegidaAlertas } from '../hooks/useZonaProtegidaAlertas'
 
 function formatearCoordenada(valor: number, positivo: string, negativo: string) {
@@ -24,17 +23,30 @@ function formatearCoordenada(valor: number, positivo: string, negativo: string) 
 // una ventana "relativa a hoy" puede caer en un hueco de cobertura -- se
 // verificó en vivo que "hoy-90 a hoy-60" devuelve 0 embarcaciones para
 // Lambayeque en la fecha de este cambio. Se usa una ventana fija ya
-// verificada con datos reales en vez de una relativa a "hoy" que puede
-// romperse silenciosamente. Se puede sobreescribir con los campos de fecha.
+// verificada con datos reales. El filtro de fechas en la UI se quitó
+// temporalmente; para cambiar el rango, editar esta constante.
 const RANGO_POR_DEFECTO = { desde: '2023-06-01', hasta: '2023-09-01' }
 
+// Mismo mapeo que NOMBRE_TIPO_INFRACCION_POR_ALERTA en
+// server/app/routes/incidentes.py -- se usa acá para preseleccionar el tipo
+// de infracción en el formulario de "Registrar incidente" cuando viene de
+// una alerta del mapa (el analista igual puede cambiarlo antes de enviar).
+const NOMBRE_TIPO_INFRACCION_POR_ALERTA: Record<TipoAlerta, string> = {
+  zona_protegida: 'Pesca en Zona Prohibida',
+  apagon_ais: 'Pérdida de Señal AIS',
+  demora_puerto: 'Encuentro Sospechoso en Alta Mar',
+}
+
 export function MonitoringPage() {
-  const [rangoAplicado, setRangoAplicado] = useState(RANGO_POR_DEFECTO)
-  const [rangoBorrador, setRangoBorrador] = useState(RANGO_POR_DEFECTO)
-  const { vessels, error } = useLambayequeVessels(rangoAplicado.desde, rangoAplicado.hasta)
+  const { vessels, error } = useLambayequeVessels(RANGO_POR_DEFECTO.desde, RANGO_POR_DEFECTO.hasta)
   const { zonas: zonasProtegidas } = useZonaProtegidaAlertas()
   const { zonas: zonasActividad } = useActividadSospechosaAlertas()
   const mmsiConIncidente = useMmsiConIncidente()
+  const { zonas: todasLasZonas } = useZonas()
+  const zonasCriticas = useMemo(
+    () => todasLasZonas.filter((z) => z.es_critica && z.poligono).map((z) => ({ id: z.id, nombre: z.nombre, poligono: z.poligono! })),
+    [todasLasZonas],
+  )
 
   const alertas = useMemo(() => {
     const deZonaProtegida = zonasProtegidas.flatMap((zona) =>
@@ -43,6 +55,7 @@ export function MonitoringPage() {
         tipoAlerta: 'zona_protegida' as TipoAlerta,
         vessel: barco.nombre,
         mmsi: barco.mmsi,
+        flag: barco.flag,
         matricula: barco.mmsi ?? 'Sin MMSI',
         description: `Embarcación detectada dentro de la zona protegida "${zona.zonaNombre}" (${zona.region}).`,
         lat: barco.lat,
@@ -70,6 +83,7 @@ export function MonitoringPage() {
           tipoAlerta: (barco.apagonAis ? 'apagon_ais' : 'demora_puerto') as TipoAlerta,
           vessel: barco.nombre,
           mmsi: barco.mmsi,
+          flag: barco.flag,
           matricula: barco.mmsi,
           description: `Actividad inusual: ${motivos.join('; ')}.`,
           lat: barco.lat,
@@ -85,55 +99,24 @@ export function MonitoringPage() {
 
   const [descartadas, setDescartadas] = useState<Set<string>>(new Set())
   const [registradas, setRegistradas] = useState<Set<string>>(new Set())
-  const { registrar, registrando, error: errorRegistro } = useRegistrarIncidente()
+  const [alertaAReportar, setAlertaAReportar] = useState<(typeof alertas)[number] | null>(null)
   const visibles = alertas.filter((a) => !descartadas.has(a.key) && !registradas.has(a.key))
-
-  async function handleRegistrar() {
-    const alerta = visibles[0]
-    if (!alerta) return
-    const ok = await registrar({
-      tipoAlerta: alerta.tipoAlerta,
-      descripcion: alerta.description,
-      mmsi: alerta.mmsi,
-      vessel: alerta.vessel,
-      lat: alerta.lat,
-      lon: alerta.lon,
-    })
-    if (ok) setRegistradas((prev) => new Set(prev).add(alerta.key))
-  }
 
   return (
     <DashboardLayout title="Sistema de Detección de Pesca Ilegal">
-      <MapView vessels={vessels} mmsiConIncidente={mmsiConIncidente}>
-        <div className="absolute bottom-4 left-4 z-[1000] flex items-end gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <TextField
-            id="monitoreo-desde"
-            label="Desde"
-            type="date"
-            icon={<CalendarIcon className="h-4 w-4" />}
-            value={rangoBorrador.desde}
-            onChange={(e) => setRangoBorrador((prev) => ({ ...prev, desde: e.target.value }))}
-          />
-          <TextField
-            id="monitoreo-hasta"
-            label="Hasta"
-            type="date"
-            icon={<CalendarIcon className="h-4 w-4" />}
-            value={rangoBorrador.hasta}
-            onChange={(e) => setRangoBorrador((prev) => ({ ...prev, hasta: e.target.value }))}
-          />
-          <Button type="button" className="w-auto px-4 py-2.5" onClick={() => setRangoAplicado(rangoBorrador)}>
-            Aplicar
-          </Button>
-        </div>
+      <MapView
+        vessels={vessels}
+        mmsiConIncidente={mmsiConIncidente}
+        zonasCriticas={zonasCriticas}
+        alertaPosicion={
+          visibles[0]
+            ? { lat: visibles[0].lat, lon: visibles[0].lon, vessel: visibles[0].vessel, mmsi: visibles[0].mmsi }
+            : null
+        }
+      >
         {error && (
           <div className="absolute top-4 left-1/2 z-[1000] -translate-x-1/2 rounded-lg bg-white px-3 py-1.5 text-xs text-red-600 shadow-sm">
             No se pudo cargar la posición de embarcaciones: {error}
-          </div>
-        )}
-        {errorRegistro && (
-          <div className="absolute top-4 left-1/2 z-[1000] -translate-x-1/2 rounded-lg bg-white px-3 py-1.5 text-xs text-red-600 shadow-sm">
-            No se pudo registrar el incidente: {errorRegistro}
           </div>
         )}
         {visibles[0] && (
@@ -145,10 +128,27 @@ export function MonitoringPage() {
             latitude={visibles[0].latitude}
             longitude={visibles[0].longitude}
             onClose={() => setDescartadas((prev) => new Set(prev).add(visibles[0].key))}
-            onRegister={registrando ? undefined : handleRegistrar}
+            onRegister={() => setAlertaAReportar(visibles[0])}
           />
         )}
       </MapView>
+      {alertaAReportar && (
+        <ReportarIncidenteModal
+          onClose={() => setAlertaAReportar(null)}
+          onRegistrado={() => {
+            setRegistradas((prev) => new Set(prev).add(alertaAReportar.key))
+          }}
+          datosIniciales={{
+            vessel: alertaAReportar.vessel,
+            mmsi: alertaAReportar.mmsi ?? undefined,
+            descripcion: alertaAReportar.description,
+            lat: alertaAReportar.lat,
+            lon: alertaAReportar.lon,
+            flag: alertaAReportar.flag,
+            tipoInfraccionNombre: NOMBRE_TIPO_INFRACCION_POR_ALERTA[alertaAReportar.tipoAlerta],
+          }}
+        />
+      )}
     </DashboardLayout>
   )
 }

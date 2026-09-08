@@ -148,12 +148,6 @@ def construir_features_flota(
     registros_presencia: list[dict],
     registros_esfuerzo: list[dict],
 ) -> dict[str, dict]:
-    """Devuelve, por mmsi, el vector de features del último día activo de cada
-    embarcación dentro del rango consultado (el día más reciente es el que
-    importa para decidir si alertar ahora). Solo se incluyen embarcaciones de
-    pesca (FISHING) con al menos MIN_DIAS_PRESENCIA días de presencia -- igual
-    criterio que scripts/detectar_irregularidades.py, para no marcar como
-    "sospechoso" a un barco que solo pasó de paso por la zona."""
 
     presencia_por_dia = _colapsar_por_dia(
         [r for r in registros_presencia if r.get("vesselType") == "FISHING"]
@@ -172,9 +166,6 @@ def construir_features_flota(
     if not candidatos:
         return {}
 
-    # --- Agregados por día para TODA la flota consultada (no solo los
-    # candidatos): alimentan las features relativas (z_..._dia, n_vecinos_*,
-    # flota_fishing_hours_max_celda). ---
     horas_por_dia: dict[str, list[float]] = defaultdict(list)
     celdas_por_dia: dict[str, list[float]] = defaultdict(list)
     fishing_horas_por_dia: dict[str, list[float]] = defaultdict(list)

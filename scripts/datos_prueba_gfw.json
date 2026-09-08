@@ -1,0 +1,2486 @@
+{
+  "presencia": [
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-01",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 7,
+      "lat": -5.85,
+      "lon": -81.2
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-02",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 7,
+      "lat": -5.859999999999999,
+      "lon": -81.21000000000001
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-03",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 7,
+      "lat": -5.869999999999999,
+      "lon": -81.22
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-04",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 7,
+      "lat": -5.88,
+      "lon": -81.23
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-05",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 7,
+      "lat": -5.89,
+      "lon": -81.24000000000001
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-06",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 7,
+      "lat": -5.8999999999999995,
+      "lon": -81.25
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-01",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.0,
+      "lon": -90.0
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-02",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.02,
+      "lon": -90.02
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-03",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.04,
+      "lon": -90.04
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-04",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.06,
+      "lon": -90.06
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-05",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.08,
+      "lon": -90.08
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-06",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.1,
+      "lon": -90.1
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-07",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.12,
+      "lon": -90.12
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-08",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.14,
+      "lon": -90.14
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-09",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.16,
+      "lon": -90.16
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-10",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 5,
+      "lat": -6.18,
+      "lon": -90.18
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-08-01",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 3,
+      "lat": -6.279999999999999,
+      "lon": -90.37009009009009
+    },
+    {
+      "mmsi": "vec-apagon-0",
+      "date": "2023-08-01",
+      "shipName": "VECINO 0",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -6.27,
+      "lon": -90.36009009009008
+    },
+    {
+      "mmsi": "vec-apagon-1",
+      "date": "2023-08-01",
+      "shipName": "VECINO 1",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -6.26,
+      "lon": -90.35009009009009
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-01",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-02",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-03",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-04",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-05",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-06",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-07",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-08",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-09",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-10",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-11",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-12",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-13",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-14",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-15",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-16",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-17",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-18",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-19",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-20",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-21",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-22",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-23",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-24",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-25",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-26",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-27",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-28",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-29",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-30",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-31",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-01",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-02",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-03",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-04",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-05",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-06",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-07",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-08",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-09",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-10",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-11",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-12",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-13",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-14",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-15",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-16",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-17",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-18",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-19",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-20",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-21",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-22",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-23",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-24",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-25",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-26",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-27",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-28",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-01",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-02",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-03",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-04",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-05",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-06",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-07",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-08",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-09",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-10",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-11",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-12",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-13",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-14",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-15",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-16",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-17",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-18",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-19",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-20",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-21",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-22",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-23",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-24",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-25",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-26",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-27",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -16.0,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-28",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.95,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-29",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.9,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-30",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.85,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-31",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 11,
+      "lat": -15.8,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-01",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 3,
+      "lat": -9.09,
+      "lon": -78.6
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-02",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 3,
+      "lat": -9.095,
+      "lon": -78.5975
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-03",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 3,
+      "lat": -9.1,
+      "lon": -78.595
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-04",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 3,
+      "lat": -9.105,
+      "lon": -78.5925
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-05",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 3,
+      "lat": -9.11,
+      "lon": -78.58999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-01",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-02",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-03",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-04",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-05",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-01",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-02",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-03",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-04",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-05",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 2,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    }
+  ],
+  "esfuerzo": [
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-01",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 4.2,
+      "lat": -5.85,
+      "lon": -81.2
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-02",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 4.2,
+      "lat": -5.859999999999999,
+      "lon": -81.21000000000001
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-03",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 4.2,
+      "lat": -5.869999999999999,
+      "lon": -81.22
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-04",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 4.2,
+      "lat": -5.88,
+      "lon": -81.23
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-05",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 4.2,
+      "lat": -5.89,
+      "lon": -81.24000000000001
+    },
+    {
+      "mmsi": "412000001",
+      "date": "2023-06-06",
+      "shipName": "PATRIMONIO DEL MAR",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 4.2,
+      "lat": -5.8999999999999995,
+      "lon": -81.25
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-01",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.0,
+      "lon": -90.0
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-02",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.02,
+      "lon": -90.02
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-03",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.04,
+      "lon": -90.04
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-04",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.06,
+      "lon": -90.06
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-05",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.08,
+      "lon": -90.08
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-06",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.1,
+      "lon": -90.1
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-07",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.12,
+      "lon": -90.12
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-08",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.14,
+      "lon": -90.14
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-09",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.16,
+      "lon": -90.16
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-07-10",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.75,
+      "lat": -6.18,
+      "lon": -90.18
+    },
+    {
+      "mmsi": "412000002",
+      "date": "2023-08-01",
+      "shipName": "DRAGON DEL PACIFICO",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.15,
+      "lat": -6.279999999999999,
+      "lon": -90.37009009009009
+    },
+    {
+      "mmsi": "vec-apagon-0",
+      "date": "2023-08-01",
+      "shipName": "VECINO 0",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.2,
+      "lat": -6.27,
+      "lon": -90.36009009009008
+    },
+    {
+      "mmsi": "vec-apagon-1",
+      "date": "2023-08-01",
+      "shipName": "VECINO 1",
+      "flag": "PAN",
+      "vesselType": "FISHING",
+      "hours": 0.2,
+      "lat": -6.26,
+      "lon": -90.35009009009009
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-01",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-02",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-03",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-04",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-05",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-06",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-07",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-08",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-09",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-10",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-11",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-12",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-13",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-14",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-15",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-16",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-17",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-18",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-19",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-20",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-21",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-22",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-23",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-24",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-25",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-26",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-27",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-28",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-29",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-30",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-01-31",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-01",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-02",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-03",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-04",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-05",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-06",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-07",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-08",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-09",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-10",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-11",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-12",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-13",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-14",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-15",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-16",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-17",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-18",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-19",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-20",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-21",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-22",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-23",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-24",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-25",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-26",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-27",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-02-28",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-01",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-02",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-03",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-04",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-05",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-06",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-07",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-08",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-09",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-10",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-11",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-12",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-13",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-14",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-15",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-16",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-17",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-18",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-19",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-20",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-21",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-22",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-23",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-24",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-25",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.3
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-26",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.0
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-27",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -16.0,
+      "lon": -85.05
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-28",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.95,
+      "lon": -85.1
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-29",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.9,
+      "lon": -85.15
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-30",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.85,
+      "lon": -85.2
+    },
+    {
+      "mmsi": "412000003",
+      "date": "2022-03-31",
+      "shipName": "LONG SPRING 88",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 8.25,
+      "lat": -15.8,
+      "lon": -85.25
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-01",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.9,
+      "lat": -9.09,
+      "lon": -78.6
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-02",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.9,
+      "lat": -9.095,
+      "lon": -78.5975
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-03",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.9,
+      "lat": -9.1,
+      "lon": -78.595
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-04",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.9,
+      "lat": -9.105,
+      "lon": -78.5925
+    },
+    {
+      "mmsi": "412000004",
+      "date": "2023-08-05",
+      "shipName": "CALETA NORTE",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.9,
+      "lat": -9.11,
+      "lon": -78.58999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-01",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-02",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-03",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-04",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-0",
+      "date": "2023-08-05",
+      "shipName": "FLOTA REF 0",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.39,
+      "lon": -78.89999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-01",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-02",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-03",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-04",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    },
+    {
+      "mmsi": "bg-zona-1",
+      "date": "2023-08-05",
+      "shipName": "FLOTA REF 1",
+      "flag": "PER",
+      "vesselType": "FISHING",
+      "hours": 0.6,
+      "lat": -9.440000000000001,
+      "lon": -78.94999999999999
+    }
+  ]
+}

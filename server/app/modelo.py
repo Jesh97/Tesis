@@ -38,6 +38,10 @@ def precargar() -> None:
     _cargar()
 
 
+def umbral(nombre_detector: str) -> float:
+    return _cargar()[nombre_detector]["threshold"]
+
+
 def predecir(nombre_detector: str, features: dict[str, float]) -> dict:
     modelos = _cargar()
     info = modelos[nombre_detector]

@@ -94,13 +94,35 @@ function ZoomControls() {
   )
 }
 
+interface ZonaCritica {
+  id: string
+  nombre: string
+  poligono: { type: 'Polygon'; coordinates: number[][][] }
+}
+
 interface MapViewProps {
   vessels?: LambayequeVessel[]
   mmsiConIncidente?: Set<string>
+  /** Zonas marcadas como críticas en la base de datos (tabla "zonas"), con el
+   * polígono real que usa el geofencing de "zona_protegida" -- se dibuja en
+   * rojo para poder comparar a simple vista contra el contorno ilustrativo
+   * de "jurisdiction" (línea azul punteada), que es un dibujo aproximado y
+   * NO necesariamente el mismo polígono que delimita las alertas. */
+  zonasCriticas?: ZonaCritica[]
+  /** Posición exacta de la alerta que se muestra ahora mismo en AlertCard
+   * (MonitoringPage) -- se dibuja un único marcador rojo ahí para ubicar la
+   * infracción, en vez de pintar de rojo TODAS las posiciones históricas de
+   * ese mmsi (el array "vessels" trae una fila por día/celda de GFW, no una
+   * por embarcación). */
+  alertaPosicion?: { lat: number; lon: number; vessel: string; mmsi: string | null } | null
   children?: ReactNode
 }
 
-export function MapView({ vessels = [], mmsiConIncidente, children }: MapViewProps) {
+function poligonoAPosiciones(poligono: ZonaCritica['poligono']): [number, number][][] {
+  return poligono.coordinates.map((anillo) => anillo.map(([lon, lat]) => [lat, lon] as [number, number]))
+}
+
+export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], alertaPosicion, children }: MapViewProps) {
   return (
     <div className="relative h-full w-full overflow-hidden">
       <MapContainer
@@ -132,6 +154,20 @@ export function MapView({ vessels = [], mmsiConIncidente, children }: MapViewPro
           </Polygon>
         ))}
 
+        {zonasCriticas.map((zona) =>
+          poligonoAPosiciones(zona.poligono).map((anillo, index) => (
+            <Polygon
+              key={`${zona.id}-${index}`}
+              positions={anillo}
+              pathOptions={{ color: '#dc2626', weight: 2, dashArray: '6 4', fillColor: '#dc2626', fillOpacity: 0.05 }}
+            >
+              <Tooltip direction="center" sticky>
+                Zona crítica: {zona.nombre}
+              </Tooltip>
+            </Polygon>
+          )),
+        )}
+
         {/* CircleMarker (canvas) en vez de Marker/divIcon: con miles de barcos
             a escala nacional, un elemento DOM por punto vuelve el mapa lento. */}
         {vessels.map((vessel, index) => {
@@ -159,6 +195,32 @@ export function MapView({ vessels = [], mmsiConIncidente, children }: MapViewPro
             </CircleMarker>
           )
         })}
+
+        {/* Único marcador para la alerta activa (AlertCard): se dibuja
+            aparte de "vessels" y con un radio bien mayor + un halo, para que
+            se vea de un vistazo dónde ocurrió la infracción sin confundirse
+            con el resto de la flota. */}
+        {alertaPosicion && (
+          <>
+            <CircleMarker
+              center={[alertaPosicion.lat, alertaPosicion.lon]}
+              radius={14}
+              pathOptions={{ color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.15, weight: 1 }}
+            />
+            <CircleMarker
+              center={[alertaPosicion.lat, alertaPosicion.lon]}
+              radius={6}
+              pathOptions={{ color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.95, weight: 2 }}
+            >
+              <Tooltip direction="top" offset={[0, -4]} permanent>
+                <strong>{alertaPosicion.vessel}</strong>
+                {alertaPosicion.mmsi ? ` · MMSI ${alertaPosicion.mmsi}` : ''}
+                <br />
+                <span style={{ color: '#dc2626', fontWeight: 600 }}>Alerta de monitoreo activa</span>
+              </Tooltip>
+            </CircleMarker>
+          </>
+        )}
 
         <Marker position={portLabel.position} icon={placeLabelIcon} />
 

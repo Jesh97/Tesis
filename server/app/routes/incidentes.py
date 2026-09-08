@@ -116,7 +116,13 @@ def tipos_infraccion():
         return cur.fetchall()
 
 
-def _vincular_o_crear_embarcacion(cur, mmsi: str | None, vessel_name: str | None) -> str | None:
+def _vincular_o_crear_embarcacion(
+    cur,
+    mmsi: str | None,
+    vessel_name: str | None,
+    bandera: str | None = None,
+    gfw_vessel_type: str | None = None,
+) -> str | None:
     if not mmsi:
         return None
     mmsi_str = str(mmsi)[:9]
@@ -124,10 +130,11 @@ def _vincular_o_crear_embarcacion(cur, mmsi: str | None, vessel_name: str | None
     fila = cur.fetchone()
     if fila:
         return fila["id"]
+    tipo = "pesca_industrial" if (gfw_vessel_type or "").upper() == "FISHING" else "otro"
     try:
         cur.execute(
-            "INSERT INTO embarcaciones (nombre, mmsi) VALUES (%s, %s) RETURNING id",
-            (vessel_name or "Desconocido", mmsi_str),
+            "INSERT INTO embarcaciones (nombre, mmsi, bandera, tipo, gfw_vessel_type) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (vessel_name or "Desconocido", mmsi_str, bandera, tipo, gfw_vessel_type),
         )
         return cur.fetchone()["id"]
     except pg_errors.UniqueViolation:
@@ -149,9 +156,14 @@ def registrar(body: dict = Body(...)):
     vessel_name = body.get("vessel")
     gravedad_manual = body.get("gravedad")
     fecha = body.get("fecha")  # ISO date opcional; None -> now()
+    bandera = body.get("bandera")  # opcional: viene de "Buscar en GFW" en el formulario
+    gfw_vessel_type = body.get("vesselType")
 
     if not isinstance(descripcion, str) or not descripcion.strip():
         raise HTTPException(status_code=400, detail={"error": 'Falta "descripcion"'})
+
+    if not mmsi and not (isinstance(vessel_name, str) and vessel_name.strip()):
+        raise HTTPException(status_code=400, detail={"error": 'Se requiere "mmsi" o "vessel"'})
 
     with get_cursor() as cur:
         if tipo_infraccion_id_manual:
@@ -178,7 +190,7 @@ def registrar(body: dict = Body(...)):
                 detail={"error": 'Se requiere "tipoInfraccionId" (reporte manual) o un "tipoAlerta" válido (alerta del mapa)'},
             )
 
-        embarcacion_id = _vincular_o_crear_embarcacion(cur, mmsi, vessel_name)
+        embarcacion_id = _vincular_o_crear_embarcacion(cur, mmsi, vessel_name, bandera, gfw_vessel_type)
 
         cur.execute(
             """INSERT INTO incidentes (embarcacion_id, tipo_infraccion_id, descripcion, gravedad, estado, latitud, longitud, fecha_deteccion)
