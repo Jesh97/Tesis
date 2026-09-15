@@ -10,6 +10,16 @@ export interface Fuente {
   procesado_en: string | null
 }
 
+export interface UrlOmitida {
+  url: string
+  estado: 'procesando' | 'exitosa'
+}
+
+export interface ResultadoAnalisis {
+  enviadas: number
+  omitidas: UrlOmitida[]
+}
+
 /** Fuentes de noticias enviadas al Analizador Web (ver
  * server/app/routes/fuentes.py). */
 export function useFuentes() {
@@ -36,7 +46,7 @@ export function useFuentes() {
     return () => clearInterval(intervalo)
   }, [recargar])
 
-  async function analizar(urls: string[]): Promise<void> {
+  async function analizar(urls: string[]): Promise<ResultadoAnalisis> {
     const response = await apiFetch('/api/fuentes/analizar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -46,7 +56,9 @@ export function useFuentes() {
       const body = (await response.json().catch(() => null)) as { error?: string } | null
       throw new Error(body?.error ?? `Error ${response.status} al iniciar el análisis`)
     }
+    const data = (await response.json()) as { fuentes: { id: string; url: string }[]; omitidas: UrlOmitida[] }
     await recargar()
+    return { enviadas: data.fuentes.length, omitidas: data.omitidas }
   }
 
   return { fuentes, loading, error, analizar }

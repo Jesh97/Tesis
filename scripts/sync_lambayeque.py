@@ -203,9 +203,14 @@ def main():
 
     import psycopg2  # importado aquí para no exigirlo en modo --json
 
-    database_url = os.getenv("DATABASE_URL")
+    # Este modo (sin --json) es una sincronización manual, no la invocación en
+    # vivo que usa la API (esa siempre pasa --json y nunca llega a este punto,
+    # ver server/app/gfw.py). Por eso usa el rol dueño de las tablas
+    # (DATABASE_URL_ADMIN, ver db/roles.sql) y no el rol restringido de runtime:
+    # los upserts de abajo no pasan por db/procedures.sql.
+    database_url = os.getenv("DATABASE_URL_ADMIN") or os.getenv("DATABASE_URL")
     if not database_url:
-        raise SystemExit(f"Falta DATABASE_URL en {ENV_FILE}")
+        raise SystemExit(f"Falta DATABASE_URL_ADMIN (o DATABASE_URL) en {ENV_FILE}")
 
     conn = psycopg2.connect(database_url)
     try:

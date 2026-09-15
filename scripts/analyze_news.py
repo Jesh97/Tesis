@@ -96,7 +96,7 @@ def extract_incident(
 
 
 def get_tipos_infraccion(cur) -> list[str]:
-    cur.execute("SELECT nombre FROM tipos_infraccion ORDER BY nombre")
+    cur.execute("SELECT * FROM sp_tipos_infraccion_nombres()")
     return [row[0] for row in cur.fetchall()]
 
 
@@ -106,25 +106,18 @@ def analyze_source(cur, client: anthropic.Anthropic, fuente_id: str, url: str, t
         extraction = extract_incident(client, titulo, texto, tipos_infraccion)
 
         if not extraction.es_relevante:
-            cur.execute(
-                "UPDATE fuentes_noticias SET estado = 'fallida', procesado_en = now() WHERE id = %s",
-                (fuente_id,),
-            )
+            cur.execute("SELECT sp_fuentes_marcar_estado(%s, 'fallida')", (fuente_id,))
             print(f"DESCARTADA  {url}")
             return
 
         tipo_infraccion_id = None
         if extraction.tipo_infraccion:
-            cur.execute("SELECT id FROM tipos_infraccion WHERE nombre = %s", (extraction.tipo_infraccion,))
+            cur.execute("SELECT * FROM sp_tipos_infraccion_obtener_por_nombre(%s)", (extraction.tipo_infraccion,))
             row = cur.fetchone()
             tipo_infraccion_id = row[0] if row else None
 
         cur.execute(
-            """
-            INSERT INTO incidentes_sugeridos_ia
-                (fuente_id, titular, resumen, tipo_infraccion_id, embarcacion_detectada, ubicacion_estimada, confianza)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
+            "SELECT sp_sugerencias_crear(%s, %s, %s, %s, %s, %s, %s)",
             (
                 fuente_id,
                 extraction.titular or titulo,
@@ -135,18 +128,12 @@ def analyze_source(cur, client: anthropic.Anthropic, fuente_id: str, url: str, t
                 extraction.confianza,
             ),
         )
-        cur.execute(
-            "UPDATE fuentes_noticias SET estado = 'exitosa', procesado_en = now() WHERE id = %s",
-            (fuente_id,),
-        )
+        cur.execute("SELECT sp_fuentes_marcar_estado(%s, 'exitosa')", (fuente_id,))
         print(f"OK          {url}")
 
     except Exception as exc:  # noqa: BLE001 - se registra y se continúa con el resto del lote
         print(f"ERROR       {url}: {exc}", file=sys.stderr)
-        cur.execute(
-            "UPDATE fuentes_noticias SET estado = 'fallida', procesado_en = now() WHERE id = %s",
-            (fuente_id,),
-        )
+        cur.execute("SELECT sp_fuentes_marcar_estado(%s, 'fallida')", (fuente_id,))
 
 
 def main() -> None:

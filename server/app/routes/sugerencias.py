@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body, HTTPException
 from starlette import status
 
-from ..db import get_cursor
+from ..db import ejecutar_sp, get_cursor
 
 router = APIRouter()
 
@@ -10,21 +10,14 @@ router = APIRouter()
 @router.get("")
 def listar():
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT s.*, f.url, f.dominio, ti.nombre AS tipo_infraccion_nombre, ti.color_indicador
-               FROM incidentes_sugeridos_ia s
-               JOIN fuentes_noticias f ON f.id = s.fuente_id
-               LEFT JOIN tipos_infraccion ti ON ti.id = s.tipo_infraccion_id
-               WHERE s.estado = 'pendiente'
-               ORDER BY s.creado_en DESC"""
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_sugerencias_listar_pendientes()")
         return cur.fetchall()
 
 
 @router.post("/{sugerencia_id}/rechazar", status_code=status.HTTP_204_NO_CONTENT)
 def rechazar(sugerencia_id: str):
     with get_cursor() as cur:
-        cur.execute("UPDATE incidentes_sugeridos_ia SET estado = 'rechazado' WHERE id = %s", (sugerencia_id,))
+        ejecutar_sp(cur, "SELECT sp_sugerencias_rechazar(%s)", (sugerencia_id,))
 
 
 # Promueve la sugerencia a un incidente real (mismo flujo que "Registrar
@@ -35,13 +28,7 @@ def aprobar(sugerencia_id: str, body: dict = Body(default={})):
     tipo_infraccion_id_override = body.get("tipo_infraccion_id")
 
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT s.*, ti.gravedad_sugerida
-               FROM incidentes_sugeridos_ia s
-               LEFT JOIN tipos_infraccion ti ON ti.id = s.tipo_infraccion_id
-               WHERE s.id = %s AND s.estado = 'pendiente'""",
-            (sugerencia_id,),
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_sugerencias_obtener_pendiente(%s)", (sugerencia_id,))
         sugerencia = cur.fetchone()
 
     if not sugerencia:
@@ -52,10 +39,9 @@ def aprobar(sugerencia_id: str, body: dict = Body(default={})):
         raise HTTPException(status_code=400, detail={"error": "Debe indicarse tipo_infraccion_id: la IA no pudo determinarlo"})
 
     with get_cursor() as cur:
-        cur.execute(
-            """INSERT INTO incidentes (tipo_infraccion_id, descripcion, gravedad, estado, fecha_deteccion)
-               VALUES (%s, %s, %s, 'sospechoso', now())
-               RETURNING id, codigo""",
+        ejecutar_sp(
+            cur,
+            "SELECT * FROM sp_incidentes_registrar_desde_sugerencia(%s, %s, %s)",
             (
                 tipo_infraccion_id,
                 sugerencia.get("resumen") or sugerencia.get("titular"),
@@ -65,9 +51,6 @@ def aprobar(sugerencia_id: str, body: dict = Body(default={})):
         incidente = cur.fetchone()
 
     with get_cursor() as cur:
-        cur.execute(
-            "UPDATE incidentes_sugeridos_ia SET estado = 'aprobado', incidente_id = %s WHERE id = %s",
-            (incidente["id"], sugerencia_id),
-        )
+        ejecutar_sp(cur, "SELECT sp_sugerencias_aprobar_vincular(%s, %s)", (sugerencia_id, incidente["id"]))
 
     return {"incidente": incidente}

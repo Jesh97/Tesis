@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from ..db import get_cursor
+from ..db import ejecutar_sp, get_cursor
 from ..gfw import consultar_actividad_con_cache, consultar_gfw_con_cache, consultar_probabilidad_zona_protegida_con_cache
 
 router = APIRouter()
@@ -24,10 +24,7 @@ ACTIVIDAD_DEMO_HASTA = "2023-09-01"
 
 def zonas_criticas() -> list[dict]:
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT id, nombre, region, poligono FROM zonas
-               WHERE es_critica AND poligono IS NOT NULL"""
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_zonas_criticas()")
         return cur.fetchall()
 
 

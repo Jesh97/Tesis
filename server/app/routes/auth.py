@@ -2,7 +2,7 @@ import bcrypt
 from fastapi import APIRouter, Body, HTTPException
 
 from ..auth_dep import crear_token
-from ..db import get_cursor
+from ..db import ejecutar_sp, get_cursor
 
 router = APIRouter()
 
@@ -15,11 +15,7 @@ def login(body: dict = Body(...)):
         raise HTTPException(status_code=400, detail={"error": "Se requiere usuario y password"})
 
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT id, usuario, password_hash, nombre_completo, rol, activo
-               FROM usuarios WHERE usuario = %s""",
-            (usuario,),
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_usuarios_buscar_para_login(%s)", (usuario,))
         fila = cur.fetchone()
 
     coincide = bcrypt.checkpw(password.encode(), fila["password_hash"].encode()) if fila else False
@@ -27,7 +23,7 @@ def login(body: dict = Body(...)):
         raise HTTPException(status_code=401, detail={"error": "Usuario o contraseña incorrectos"})
 
     with get_cursor() as cur:
-        cur.execute("UPDATE usuarios SET ultimo_acceso = now() WHERE id = %s", (fila["id"],))
+        ejecutar_sp(cur, "SELECT sp_usuarios_marcar_acceso(%s)", (fila["id"],))
 
     return {
         "token": crear_token(fila),

@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 from starlette import status
 
-from ..db import get_cursor
+from ..db import ejecutar_sp, get_cursor
 
 router = APIRouter()
 
@@ -51,7 +51,12 @@ def analizar(body: dict = Body(...)):
     if len(urls) > URL_LIMIT:
         raise HTTPException(status_code=400, detail={"error": f"Máximo {URL_LIMIT} URLs por lote"})
 
+    # "creados": URLs nuevas (o un reintento de una que había fallado antes)
+    # que sí se van a analizar. "omitidas": URLs que ya se habían enviado y
+    # siguen en proceso o ya se analizaron con éxito -- no se vuelven a
+    # analizar ni se les crea una fila duplicada (ver sp_fuentes_crear).
     creados: list[dict] = []
+    omitidas: list[dict] = []
     with get_cursor() as cur:
         for raw_url in urls:
             if not isinstance(raw_url, str):
@@ -69,24 +74,21 @@ def analizar(body: dict = Body(...)):
             except Exception:
                 continue  # URL inválida: se ignora silenciosamente
 
-            cur.execute(
-                """INSERT INTO fuentes_noticias (url, dominio, estado)
-                   VALUES (%s, %s, 'procesando') RETURNING id""",
-                (raw_url, dominio),
-            )
-            creados.append({"id": cur.fetchone()["id"], "url": raw_url})
+            ejecutar_sp(cur, "SELECT * FROM sp_fuentes_crear(%s, %s)", (raw_url, dominio))
+            fila = cur.fetchone()
+            if fila["debe_analizar"]:
+                creados.append({"id": fila["id"], "url": raw_url})
+            else:
+                omitidas.append({"url": raw_url, "estado": fila["estado_actual"]})
 
     if creados:
         _run_analyze_news_script(creados)
 
-    return {"fuentes": creados}
+    return {"fuentes": creados, "omitidas": omitidas}
 
 
 @router.get("")
 def listar():
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT id, url, dominio, estado, creado_en, procesado_en
-               FROM fuentes_noticias ORDER BY creado_en DESC LIMIT 50"""
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_fuentes_listar()")
         return cur.fetchall()

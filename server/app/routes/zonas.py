@@ -1,10 +1,9 @@
 import json
 
 from fastapi import APIRouter, Body, HTTPException
-from psycopg2 import errors as pg_errors
 from starlette import status
 
-from ..db import get_cursor
+from ..db import ejecutar_sp, get_cursor
 
 router = APIRouter()
 
@@ -19,10 +18,7 @@ def _construir_poligono(coordenadas: list[dict]) -> dict:
 @router.get("")
 def listar():
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT id, nombre, region, es_critica, poligono, creado_en
-               FROM zonas ORDER BY creado_en DESC"""
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_zonas_listar()")
         return cur.fetchall()
 
 
@@ -49,20 +45,16 @@ def crear(body: dict = Body(...)):
 
     poligono = _construir_poligono(coordenadas)
 
-    try:
-        with get_cursor() as cur:
-            cur.execute(
-                """INSERT INTO zonas (nombre, region, es_critica, poligono)
-                   VALUES (%s, %s, %s, %s)
-                   RETURNING id, nombre, region, es_critica, poligono, creado_en""",
-                (nombre.strip(), region.strip(), bool(es_critica), json.dumps(poligono)),
-            )
-            return cur.fetchone()
-    except pg_errors.UniqueViolation as err:
-        raise HTTPException(status_code=409, detail={"error": "Ya existe una zona con ese nombre y región"}) from err
+    with get_cursor() as cur:
+        ejecutar_sp(
+            cur,
+            "SELECT * FROM sp_zonas_crear(%s, %s, %s, %s)",
+            (nombre.strip(), region.strip(), bool(es_critica), json.dumps(poligono)),
+        )
+        return cur.fetchone()
 
 
 @router.delete("/{zona_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar(zona_id: str):
     with get_cursor() as cur:
-        cur.execute("DELETE FROM zonas WHERE id = %s", (zona_id,))
+        ejecutar_sp(cur, "SELECT sp_zonas_eliminar(%s)", (zona_id,))

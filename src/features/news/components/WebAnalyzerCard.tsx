@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { CircleDotIcon, PlayIcon, SparklesIcon } from '../../../components/icons'
+import type { ResultadoAnalisis } from '../hooks/useFuentes'
 
 const urlLimit = 10
 
+const ESTADO_OMITIDA_LABEL: Record<string, string> = {
+  procesando: 'ya se está analizando',
+  exitosa: 'ya fue analizada',
+}
+
 interface WebAnalyzerCardProps {
-  onAnalizar: (urls: string[]) => Promise<void>
+  onAnalizar: (urls: string[]) => Promise<ResultadoAnalisis>
 }
 
 export function WebAnalyzerCard({ onAnalizar }: WebAnalyzerCardProps) {
   const [urls, setUrls] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
   const listaUrls = urls
@@ -20,6 +27,7 @@ export function WebAnalyzerCard({ onAnalizar }: WebAnalyzerCardProps) {
 
   async function handleIniciar() {
     setError(null)
+    setAviso(null)
     if (listaUrls.length === 0) {
       setError('Ingrese al menos una URL')
       return
@@ -31,8 +39,14 @@ export function WebAnalyzerCard({ onAnalizar }: WebAnalyzerCardProps) {
 
     setEnviando(true)
     try {
-      await onAnalizar(listaUrls)
+      const resultado = await onAnalizar(listaUrls)
       setUrls('')
+      if (resultado.omitidas.length > 0) {
+        const detalle = resultado.omitidas
+          .map((o) => `${o.url} (${ESTADO_OMITIDA_LABEL[o.estado] ?? o.estado})`)
+          .join(', ')
+        setAviso(`${resultado.omitidas.length} URL(s) ya se habían enviado antes y se omitieron: ${detalle}`)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -74,6 +88,7 @@ export function WebAnalyzerCard({ onAnalizar }: WebAnalyzerCardProps) {
         </div>
 
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        {aviso && <p className="mt-2 text-xs text-amber-600">{aviso}</p>}
 
         <button
           type="button"

@@ -309,7 +309,9 @@ CREATE TRIGGER trg_generar_codigo_incidente
 
 CREATE TABLE fuentes_noticias (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  url text NOT NULL,
+  -- UNIQUE evita analizar la misma URL dos veces (ver sp_fuentes_crear en
+  -- db/procedures.sql: si ya existe, reutiliza esa fila en vez de duplicarla).
+  url text NOT NULL UNIQUE,
   dominio varchar(150) NOT NULL,
   estado estado_fuente NOT NULL DEFAULT 'pendiente',
   enviado_por uuid REFERENCES usuarios (id),

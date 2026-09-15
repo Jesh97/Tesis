@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Body, HTTPException, Query
-from psycopg2 import errors as pg_errors
 
-from ..db import get_cursor
+from ..db import ejecutar_sp, get_cursor
 
 router = APIRouter()
 
@@ -26,47 +25,16 @@ def listar(
     tipo: str | None = Query(default=None),
     gravedad: str | None = Query(default=None),
 ):
-    condiciones = []
-    parametros: list = []
-
-    if desde:
-        condiciones.append("i.fecha_deteccion >= %s")
-        parametros.append(desde)
-    if hasta:
-        condiciones.append("i.fecha_deteccion < (%s::date + interval '1 day')")
-        parametros.append(hasta)
-    if tipo:
-        if tipo not in TIPOS_EMBARCACION_VALIDOS:
-            raise HTTPException(status_code=400, detail={"error": f'"tipo" inválido: {tipo}'})
-        condiciones.append("e.tipo = %s")
-        parametros.append(tipo)
-    if gravedad:
-        if gravedad not in GRAVEDADES_VALIDAS:
-            raise HTTPException(status_code=400, detail={"error": f'"gravedad" inválida: {gravedad}'})
-        condiciones.append("i.gravedad = %s")
-        parametros.append(gravedad)
-
-    where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
+    # Validación de forma (no toca la BD): igual que antes, se hace en Python
+    # para devolver el mismo mensaje de error de siempre antes de llamar a la
+    # función almacenada, que ya recibe el tipo/gravedad tipados y validados.
+    if tipo is not None and tipo not in TIPOS_EMBARCACION_VALIDOS:
+        raise HTTPException(status_code=400, detail={"error": f'"tipo" inválido: {tipo}'})
+    if gravedad is not None and gravedad not in GRAVEDADES_VALIDAS:
+        raise HTTPException(status_code=400, detail={"error": f'"gravedad" inválida: {gravedad}'})
 
     with get_cursor() as cur:
-        cur.execute(
-            f"""SELECT
-                 i.codigo,
-                 e.nombre AS vessel,
-                 e.mmsi,
-                 e.matricula,
-                 i.descripcion AS infraction,
-                 i.fecha_deteccion,
-                 i.gravedad AS severity,
-                 i.estado,
-                 i.latitud,
-                 i.longitud
-               FROM incidentes i
-               LEFT JOIN embarcaciones e ON e.id = i.embarcacion_id
-               {where}
-               ORDER BY i.fecha_deteccion DESC""",
-            parametros,
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_incidentes_listar(%s, %s, %s, %s)", (desde, hasta, tipo, gravedad))
         rows = cur.fetchall()
 
     return [
@@ -89,12 +57,7 @@ def listar(
 @router.get("/mmsi-con-incidente")
 def mmsi_con_incidente():
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT DISTINCT e.mmsi
-               FROM incidentes i
-               JOIN embarcaciones e ON e.id = i.embarcacion_id
-               WHERE e.mmsi IS NOT NULL AND i.estado = 'confirmado'"""
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_incidentes_mmsi_con_incidente()")
         rows = cur.fetchall()
     return [r["mmsi"] for r in rows]
 
@@ -105,12 +68,7 @@ def mmsi_con_incidente():
 @router.get("/mmsi-reportados")
 def mmsi_reportados():
     with get_cursor() as cur:
-        cur.execute(
-            """SELECT DISTINCT e.mmsi
-               FROM incidentes i
-               JOIN embarcaciones e ON e.id = i.embarcacion_id
-               WHERE e.mmsi IS NOT NULL AND i.estado <> 'descartado'"""
-        )
+        ejecutar_sp(cur, "SELECT * FROM sp_incidentes_mmsi_reportados()")
         rows = cur.fetchall()
     return [r["mmsi"] for r in rows]
 
@@ -119,9 +77,7 @@ def mmsi_reportados():
 @router.post("/{codigo}/descartar", status_code=204)
 def descartar(codigo: str):
     with get_cursor() as cur:
-        cur.execute("UPDATE incidentes SET estado = 'descartado' WHERE codigo = %s", (codigo,))
-        if cur.rowcount == 0:
-            raise HTTPException(status_code=404, detail={"error": f'No existe el incidente "{codigo}"'})
+        ejecutar_sp(cur, "SELECT sp_incidentes_descartar(%s)", (codigo,))
 
 
 # Botón "Confirmar" en la fila de un incidente (IncidentsTable): el analista
@@ -131,26 +87,14 @@ def descartar(codigo: str):
 @router.post("/{codigo}/confirmar", status_code=204)
 def confirmar(codigo: str):
     with get_cursor() as cur:
-        cur.execute(
-            "UPDATE incidentes SET estado = 'confirmado' WHERE codigo = %s AND estado = 'sospechoso'",
-            (codigo,),
-        )
-        if cur.rowcount == 0:
-            cur.execute("SELECT estado FROM incidentes WHERE codigo = %s", (codigo,))
-            fila = cur.fetchone()
-            if not fila:
-                raise HTTPException(status_code=404, detail={"error": f'No existe el incidente "{codigo}"'})
-            raise HTTPException(
-                status_code=409,
-                detail={"error": f'El incidente "{codigo}" ya está en estado "{fila["estado"]}", no en "sospechoso"'},
-            )
+        ejecutar_sp(cur, "SELECT sp_incidentes_confirmar(%s)", (codigo,))
 
 
 # Catálogo para el formulario de "Reportar incidencia" (sidebar).
 @router.get("/tipos-infraccion")
 def tipos_infraccion():
     with get_cursor() as cur:
-        cur.execute("SELECT id, nombre, gravedad_sugerida FROM tipos_infraccion ORDER BY nombre")
+        ejecutar_sp(cur, "SELECT * FROM sp_tipos_infraccion_listar()")
         return cur.fetchall()
 
 
@@ -161,22 +105,12 @@ def _vincular_o_crear_embarcacion(
     bandera: str | None = None,
     gfw_vessel_type: str | None = None,
 ) -> str | None:
-    if not mmsi:
-        return None
-    mmsi_str = str(mmsi)[:9]
-    cur.execute("SELECT id FROM embarcaciones WHERE mmsi = %s", (mmsi_str,))
-    fila = cur.fetchone()
-    if fila:
-        return fila["id"]
-    tipo = "pesca_industrial" if (gfw_vessel_type or "").upper() == "FISHING" else "otro"
-    try:
-        cur.execute(
-            "INSERT INTO embarcaciones (nombre, mmsi, bandera, tipo, gfw_vessel_type) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-            (vessel_name or "Desconocido", mmsi_str, bandera, tipo, gfw_vessel_type),
-        )
-        return cur.fetchone()["id"]
-    except pg_errors.UniqueViolation:
-        return None  # carrera con otra inserción concurrente del mismo mmsi: se sigue sin vincular
+    ejecutar_sp(
+        cur,
+        "SELECT sp_embarcaciones_vincular_o_crear(%s, %s, %s, %s) AS id",
+        (mmsi, vessel_name, bandera, gfw_vessel_type),
+    )
+    return cur.fetchone()["id"]
 
 
 # "Registrar incidente" desde una alerta de monitoreo (AlertCard en el mapa,
@@ -205,10 +139,7 @@ def registrar(body: dict = Body(...)):
 
     with get_cursor() as cur:
         if tipo_infraccion_id_manual:
-            cur.execute(
-                "SELECT id, gravedad_sugerida FROM tipos_infraccion WHERE id = %s",
-                (tipo_infraccion_id_manual,),
-            )
+            ejecutar_sp(cur, "SELECT * FROM sp_tipos_infraccion_obtener(%s)", (tipo_infraccion_id_manual,))
             tipo = cur.fetchone()
             if not tipo:
                 raise HTTPException(status_code=400, detail={"error": '"tipoInfraccionId" no existe en el catálogo'})
@@ -217,7 +148,7 @@ def registrar(body: dict = Body(...)):
             gravedad = gravedad_manual or tipo["gravedad_sugerida"]
         elif tipo_alerta in NOMBRE_TIPO_INFRACCION_POR_ALERTA:
             nombre_tipo = NOMBRE_TIPO_INFRACCION_POR_ALERTA[tipo_alerta]
-            cur.execute("SELECT id, gravedad_sugerida FROM tipos_infraccion WHERE nombre = %s", (nombre_tipo,))
+            ejecutar_sp(cur, "SELECT * FROM sp_tipos_infraccion_obtener_por_nombre(%s)", (nombre_tipo,))
             tipo = cur.fetchone()
             if not tipo:
                 raise HTTPException(status_code=500, detail={"error": f'No existe el tipo de infracción "{nombre_tipo}" en el catálogo'})
@@ -230,29 +161,12 @@ def registrar(body: dict = Body(...)):
 
         embarcacion_id = _vincular_o_crear_embarcacion(cur, mmsi, vessel_name, bandera, gfw_vessel_type)
 
-        # Evita duplicar el mismo problema (p. ej. una alerta de "Encuentro
-        # Sospechoso en Alta Mar" que sigue apareciendo tras recargar el mapa):
-        # si ya hay un incidente activo (no descartado) para esta embarcación
-        # con este mismo tipo de infracción, no se crea uno nuevo.
-        if embarcacion_id:
-            cur.execute(
-                """SELECT codigo FROM incidentes
-                   WHERE embarcacion_id = %s AND tipo_infraccion_id = %s AND estado <> 'descartado'""",
-                (embarcacion_id, tipo["id"]),
-            )
-            existente = cur.fetchone()
-            if existente:
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "error": f'Ya existe un incidente registrado ({existente["codigo"]}) para esta embarcación con este tipo de infracción'
-                    },
-                )
-
-        cur.execute(
-            """INSERT INTO incidentes (embarcacion_id, tipo_infraccion_id, descripcion, gravedad, estado, latitud, longitud, fecha_deteccion)
-               VALUES (%s, %s, %s, %s, 'sospechoso', %s, %s, COALESCE(%s::timestamptz, now()))
-               RETURNING id, codigo""",
+        # La deduplicación (evitar duplicar el mismo problema -- p. ej. una
+        # alerta de "Encuentro Sospechoso en Alta Mar" que sigue apareciendo
+        # tras recargar el mapa) vive dentro de sp_incidentes_registrar.
+        ejecutar_sp(
+            cur,
+            "SELECT * FROM sp_incidentes_registrar(%s, %s, %s, %s, %s, %s, %s)",
             (embarcacion_id, tipo["id"], descripcion.strip(), gravedad, lat, lon, fecha),
         )
         incidente = cur.fetchone()

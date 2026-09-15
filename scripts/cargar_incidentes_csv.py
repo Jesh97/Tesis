@@ -85,9 +85,13 @@ def cargar_incidentes_confirmados() -> pd.DataFrame:
 
 
 def main():
-    database_url = os.getenv("DATABASE_URL")
+    # Carga masiva manual (no la corre la API): usa el rol dueño de las
+    # tablas (DATABASE_URL_ADMIN, ver db/roles.sql), no el rol restringido
+    # con el que corre la app en runtime -- este script hace upserts propios
+    # que no pasan por db/procedures.sql.
+    database_url = os.getenv("DATABASE_URL_ADMIN") or os.getenv("DATABASE_URL")
     if not database_url:
-        raise SystemExit(f"Falta DATABASE_URL en {ENV_FILE}")
+        raise SystemExit(f"Falta DATABASE_URL_ADMIN (o DATABASE_URL) en {ENV_FILE}")
 
     incidentes = cargar_incidentes_confirmados()
     print(f"Incidentes confirmados únicos en el CSV: {len(incidentes)}")
