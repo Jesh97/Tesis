@@ -82,5 +82,14 @@ export function useIncidentes(filtros: FiltrosIncidentes = {}) {
     setIncidents((prev) => prev.filter((i) => i.id !== id))
   }
 
-  return { incidents, loading, error, descartar }
+  async function confirmar(id: string): Promise<void> {
+    const response = await apiFetch(`/api/incidentes/${id}/confirmar`, { method: 'POST' })
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null
+      throw new Error(body?.error ?? `Error ${response.status} al confirmar el incidente`)
+    }
+    setIncidents((prev) => prev.map((i) => (i.id === id ? { ...i, estado: 'confirmado' } : i)))
+  }
+
+  return { incidents, loading, error, descartar, confirmar }
 }

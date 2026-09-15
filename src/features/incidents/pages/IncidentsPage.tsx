@@ -15,7 +15,7 @@ export function IncidentsPage() {
   const [page, setPage] = useState(1)
   const [borrador, setBorrador] = useState<FiltrosIncidentes>(FILTROS_VACIOS)
   const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosIncidentes>(FILTROS_VACIOS)
-  const { incidents, loading, error, descartar } = useIncidentes(filtrosAplicados)
+  const { incidents, loading, error, descartar, confirmar } = useIncidentes(filtrosAplicados)
 
   const hayFiltrosActivos = Object.values(filtrosAplicados).some((v) => v)
 
@@ -129,7 +129,7 @@ export function IncidentsPage() {
           )}
           {!error && incidents.length > 0 && (
             <>
-              <IncidentsTable incidents={pageItems} onDescartar={descartar} />
+              <IncidentsTable incidents={pageItems} onDescartar={descartar} onConfirmar={confirmar} />
               <div className="border-t border-slate-200">
                 <Pagination
                   page={page}

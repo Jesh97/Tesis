@@ -7,6 +7,7 @@ import { MapView } from '../components/MapView'
 import { useActividadSospechosaAlertas } from '../hooks/useActividadSospechosaAlertas'
 import { useLambayequeVessels } from '../hooks/useLambayequeVessels'
 import { useMmsiConIncidente } from '../hooks/useMmsiConIncidente'
+import { useMmsiReportados } from '../hooks/useMmsiReportados'
 import type { TipoAlerta } from '../types'
 import { useZonaProtegidaAlertas } from '../hooks/useZonaProtegidaAlertas'
 
@@ -42,6 +43,7 @@ export function MonitoringPage() {
   const { zonas: zonasProtegidas } = useZonaProtegidaAlertas()
   const { zonas: zonasActividad } = useActividadSospechosaAlertas()
   const mmsiConIncidente = useMmsiConIncidente()
+  const mmsiReportados = useMmsiReportados()
   const { zonas: todasLasZonas } = useZonas()
   const zonasCriticas = useMemo(
     () => todasLasZonas.filter((z) => z.es_critica && z.poligono).map((z) => ({ id: z.id, nombre: z.nombre, poligono: z.poligono! })),
@@ -100,7 +102,13 @@ export function MonitoringPage() {
   const [descartadas, setDescartadas] = useState<Set<string>>(new Set())
   const [registradas, setRegistradas] = useState<Set<string>>(new Set())
   const [alertaAReportar, setAlertaAReportar] = useState<(typeof alertas)[number] | null>(null)
-  const visibles = alertas.filter((a) => !descartadas.has(a.key) && !registradas.has(a.key))
+  // Además de lo descartado/registrado en esta sesión, se excluye lo que ya
+  // quedó reportado en la base de datos (por este analista u otro, incluso
+  // en una sesión anterior), para no volver a mostrar ni permitir duplicar
+  // el mismo incidente en alta mar.
+  const visibles = alertas.filter(
+    (a) => !descartadas.has(a.key) && !registradas.has(a.key) && !(a.mmsi && mmsiReportados.has(a.mmsi)),
+  )
 
   return (
     <DashboardLayout title="Sistema de Detección de Pesca Ilegal">

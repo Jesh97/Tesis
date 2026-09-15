@@ -99,6 +99,22 @@ def mmsi_con_incidente():
     return [r["mmsi"] for r in rows]
 
 
+# Lista liviana de mmsi con un incidente activo (no descartado), para dejar de
+# mostrar/permitir registrar de nuevo una alerta de monitoreo (MonitoringPage)
+# que ya fue reportada, incluso después de recargar el mapa.
+@router.get("/mmsi-reportados")
+def mmsi_reportados():
+    with get_cursor() as cur:
+        cur.execute(
+            """SELECT DISTINCT e.mmsi
+               FROM incidentes i
+               JOIN embarcaciones e ON e.id = i.embarcacion_id
+               WHERE e.mmsi IS NOT NULL AND i.estado <> 'descartado'"""
+        )
+        rows = cur.fetchall()
+    return [r["mmsi"] for r in rows]
+
+
 # Botón "Descartar" en la fila de un incidente (IncidentsTable).
 @router.post("/{codigo}/descartar", status_code=204)
 def descartar(codigo: str):
@@ -106,6 +122,28 @@ def descartar(codigo: str):
         cur.execute("UPDATE incidentes SET estado = 'descartado' WHERE codigo = %s", (codigo,))
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail={"error": f'No existe el incidente "{codigo}"'})
+
+
+# Botón "Confirmar" en la fila de un incidente (IncidentsTable): el analista
+# verificó la infracción y pasa el incidente de "sospechoso" a "confirmado"
+# (recién ahí se resalta la embarcación en rojo en el mapa, ver
+# mmsi_con_incidente arriba).
+@router.post("/{codigo}/confirmar", status_code=204)
+def confirmar(codigo: str):
+    with get_cursor() as cur:
+        cur.execute(
+            "UPDATE incidentes SET estado = 'confirmado' WHERE codigo = %s AND estado = 'sospechoso'",
+            (codigo,),
+        )
+        if cur.rowcount == 0:
+            cur.execute("SELECT estado FROM incidentes WHERE codigo = %s", (codigo,))
+            fila = cur.fetchone()
+            if not fila:
+                raise HTTPException(status_code=404, detail={"error": f'No existe el incidente "{codigo}"'})
+            raise HTTPException(
+                status_code=409,
+                detail={"error": f'El incidente "{codigo}" ya está en estado "{fila["estado"]}", no en "sospechoso"'},
+            )
 
 
 # Catálogo para el formulario de "Reportar incidencia" (sidebar).
@@ -191,6 +229,25 @@ def registrar(body: dict = Body(...)):
             )
 
         embarcacion_id = _vincular_o_crear_embarcacion(cur, mmsi, vessel_name, bandera, gfw_vessel_type)
+
+        # Evita duplicar el mismo problema (p. ej. una alerta de "Encuentro
+        # Sospechoso en Alta Mar" que sigue apareciendo tras recargar el mapa):
+        # si ya hay un incidente activo (no descartado) para esta embarcación
+        # con este mismo tipo de infracción, no se crea uno nuevo.
+        if embarcacion_id:
+            cur.execute(
+                """SELECT codigo FROM incidentes
+                   WHERE embarcacion_id = %s AND tipo_infraccion_id = %s AND estado <> 'descartado'""",
+                (embarcacion_id, tipo["id"]),
+            )
+            existente = cur.fetchone()
+            if existente:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": f'Ya existe un incidente registrado ({existente["codigo"]}) para esta embarcación con este tipo de infracción'
+                    },
+                )
 
         cur.execute(
             """INSERT INTO incidentes (embarcacion_id, tipo_infraccion_id, descripcion, gravedad, estado, latitud, longitud, fecha_deteccion)

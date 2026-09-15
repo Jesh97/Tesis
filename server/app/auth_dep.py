@@ -12,7 +12,13 @@ from fastapi import Header, HTTPException
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-secret-cambiar-en-produccion")
+SESSION_SECRET = os.getenv("SESSION_SECRET")
+if not SESSION_SECRET:
+    raise RuntimeError(
+        'Falta "SESSION_SECRET" en el entorno (ver server/.env.example): sin ella cualquiera '
+        "podría firmar tokens de sesión válidos con una clave por defecto conocida."
+    )
+
 ALGORITMO = "HS256"
 DURACION_SESION = timedelta(hours=12)
 

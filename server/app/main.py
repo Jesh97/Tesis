@@ -37,6 +37,14 @@ from .routes.zonas import router as zonas_router
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
+# Orígenes desde los que el navegador puede llamar a esta API. La app en sí
+# no depende de esto en dev (Vite hace de proxy same-origin para /api, ver
+# vite.config.ts), pero sin restringirlo cualquier página en cualquier
+# dominio podría invocar la API desde el navegador de un usuario logueado.
+# En producción, definir CORS_ORIGINS con el/los dominios reales del frontend.
+_CORS_ORIGINS_POR_DEFECTO = "http://localhost:5173,http://127.0.0.1:5173"
+_cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", _CORS_ORIGINS_POR_DEFECTO).split(",") if o.strip()]
+
 # Refresca el cache un poco antes de que expire (en vez de dejarlo vencer y
 # recién recalcular cuando un usuario entra a la página) para que los barcos
 # ya estén listos apenas se abre el sistema, y se mantengan así mientras el
@@ -78,9 +86,9 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
