@@ -16,6 +16,10 @@ export interface Sugerencia {
   creado_en: string
   url: string
   dominio: string
+  /** true si ya existía otra sugerencia/incidente activo para la misma
+   * embarcación (por nombre o matrícula) -- ver sp_sugerencias_verificar_duplicado.
+   * No bloquea aprobar, es solo una advertencia para el analista. */
+  posible_duplicado: boolean
 }
 
 /** Cola de Validación IA: sugerencias de incidente extraídas de noticias

@@ -36,7 +36,13 @@ CREATE TYPE estado_incidente AS ENUM ('sospechoso', 'confirmado', 'descartado');
 
 CREATE TYPE estado_alerta AS ENUM ('activa', 'registrada', 'descartada');
 
-CREATE TYPE estado_fuente AS ENUM ('pendiente', 'procesando', 'exitosa', 'fallida');
+-- 'descartada': el análisis SÍ terminó bien, pero la IA determinó que el
+-- artículo no describe una infracción concreta (nota general del sector,
+-- conferencia, informe económico, etc.) -- distinto de 'fallida', que es un
+-- error técnico real (no se pudo descargar/leer el artículo, la IA no
+-- respondió, etc.). Antes ambos casos compartían 'fallida' y la UI mostraba
+-- "Falló el análisis" para algo que en realidad funcionó correctamente.
+CREATE TYPE estado_fuente AS ENUM ('pendiente', 'procesando', 'exitosa', 'fallida', 'descartada');
 
 CREATE TYPE estado_sugerencia AS ENUM ('pendiente', 'aprobado', 'rechazado');
 
@@ -244,6 +250,14 @@ CREATE TABLE incidentes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo varchar(20) NOT NULL UNIQUE,        -- ej: INC-2023-089
   embarcacion_id uuid REFERENCES embarcaciones (id),
+  -- Nombre que la fuente (noticia) reportó para la embarcación cuando NO se
+  -- pudo verificar contra GFW ni vincular a una fila real de "embarcaciones"
+  -- (esa tabla exige mmsi/imo/matricula/gfw_vessel_id -- ver
+  -- chk_embarcacion_tiene_identidad -- así que un nombre de texto libre solo
+  -- no alcanza para crear una fila ahí). Se usa como fallback de display
+  -- (ver sp_incidentes_listar) para no mostrar "Desconocido" a secas cuando
+  -- en realidad el artículo sí nombraba una nave, aunque no esté confirmada.
+  embarcacion_nombre_reportado varchar(200),
   zona_id uuid REFERENCES zonas (id),
   tipo_infraccion_id uuid NOT NULL REFERENCES tipos_infraccion (id),
   descripcion text,
@@ -333,7 +347,15 @@ CREATE TABLE incidentes_sugeridos_ia (
   resumen text,
   tipo_infraccion_id uuid REFERENCES tipos_infraccion (id),
   embarcacion_detectada varchar(200),        -- texto libre extraído por NLP
+  matricula_detectada varchar(30),           -- matrícula si el artículo la menciona explícitamente (identidad válida, a diferencia del nombre solo -- ver chk_embarcacion_tiene_identidad)
+  -- true si, al crear la sugerencia, ya existía otra sugerencia activa o un
+  -- incidente para la misma embarcación (por nombre o matrícula) -- cubre el
+  -- caso de que dos medios distintos cubran el mismo hecho con URLs
+  -- distintas (sp_fuentes_crear solo deduplica por URL exacta). Ver
+  -- sp_sugerencias_verificar_duplicado.
+  posible_duplicado boolean NOT NULL DEFAULT false,
   ubicacion_estimada varchar(150),
+  fecha_publicacion timestamptz,             -- fecha del artículo (trafilatura/htmldate); NULL si no se pudo extraer
   confianza numeric(4, 3) CHECK (confianza BETWEEN 0 AND 1),
   estado estado_sugerencia NOT NULL DEFAULT 'pendiente',
   incidente_id uuid REFERENCES incidentes (id), -- se enlaza al aprobarse

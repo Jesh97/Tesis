@@ -22,6 +22,9 @@ __pycache__
 *.pyc
 .pytest_cache
 
+# Cache en disco de respuestas de GFW (server/app/gfw.py) -- se regenera sola
+server/.cache/
+
 # Datos pesados (modelo entrenado + datasets): no caben en GitHub sin Git LFS
 datos/
 

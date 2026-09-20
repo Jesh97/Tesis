@@ -9,3 +9,4 @@ numpy
 scikit-learn
 imbalanced-learn
 joblib
+spacy

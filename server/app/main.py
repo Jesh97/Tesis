@@ -17,6 +17,7 @@ from .gfw import (
     consultar_actividad_con_cache,
     consultar_gfw_con_cache,
     consultar_probabilidad_zona_protegida_con_cache,
+    ejecutar_por_zonas,
     iniciar_precarga_periodica,
 )
 from .routes.auth import router as auth_router
@@ -64,11 +65,17 @@ def _precargar_embarcaciones() -> None:
     consultar_gfw_con_cache(_RANGO_LAMBAYEQUE_DESDE, _RANGO_LAMBAYEQUE_HASTA, "lambayeque")
 
 
+def _precargar_una_zona(zona: dict) -> None:
+    consultar_gfw_con_cache(DEMO_DESDE, DEMO_HASTA, f"zona:{zona['id']}", zona["poligono"])
+    consultar_probabilidad_zona_protegida_con_cache(DEMO_DESDE, DEMO_HASTA, f"zona:{zona['id']}", zona["poligono"])
+    consultar_actividad_con_cache(ACTIVIDAD_DEMO_DESDE, ACTIVIDAD_DEMO_HASTA, f"zona:{zona['id']}", zona["poligono"])
+
+
 def _precargar_irregularidades() -> None:
-    for zona in zonas_criticas():
-        consultar_gfw_con_cache(DEMO_DESDE, DEMO_HASTA, f"zona:{zona['id']}", zona["poligono"])
-        consultar_probabilidad_zona_protegida_con_cache(DEMO_DESDE, DEMO_HASTA, f"zona:{zona['id']}", zona["poligono"])
-        consultar_actividad_con_cache(ACTIVIDAD_DEMO_DESDE, ACTIVIDAD_DEMO_HASTA, f"zona:{zona['id']}", zona["poligono"])
+    # Zonas en paralelo (acotado, ver MAX_ZONAS_CONCURRENTES en gfw.py): cada
+    # una tarda ~10-20s en GFW, y hacerlas una por una dejaba el cache frío
+    # por más de un minuto después de arrancar el servidor.
+    ejecutar_por_zonas(zonas_criticas(), _precargar_una_zona)
 
 
 @asynccontextmanager

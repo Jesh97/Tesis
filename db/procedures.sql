@@ -61,6 +61,8 @@ $$;
 -- Incidentes
 -- =========================================================
 
+DROP FUNCTION IF EXISTS sp_incidentes_listar(date, date, tipo_embarcacion, gravedad_incidente);
+
 CREATE OR REPLACE FUNCTION sp_incidentes_listar(
   p_desde date DEFAULT NULL,
   p_hasta date DEFAULT NULL,
@@ -70,6 +72,7 @@ CREATE OR REPLACE FUNCTION sp_incidentes_listar(
 RETURNS TABLE (
   codigo varchar,
   vessel varchar,
+  vessel_verificado boolean,
   mmsi varchar,
   matricula varchar,
   infraction text,
@@ -85,7 +88,11 @@ BEGIN
   RETURN QUERY
   SELECT
     i.codigo,
-    e.nombre,
+    -- Nombre real (vinculado a GFW) si existe; si no, el nombre que reportó
+    -- la fuente sin verificar (ver embarcacion_nombre_reportado); si tampoco
+    -- hay eso, NULL -> el route lo muestra como "Desconocido".
+    coalesce(e.nombre, i.embarcacion_nombre_reportado),
+    (e.nombre IS NOT NULL),
     e.mmsi,
     e.matricula,
     i.descripcion,
@@ -200,11 +207,22 @@ $$;
 -- se pasó mmsi (reporte manual solo con nombre) o si hubo una carrera con
 -- otra inserción concurrente del mismo mmsi (se sigue sin vincular, igual
 -- que en el código Python original).
+-- p_matricula es una identidad alternativa al mmsi: cubre embarcaciones
+-- artesanales sin AIS que un artículo reporta con su matrícula de pesca
+-- (ej. "matrícula 37499-BM", ver extraccion_reglas.py) pero que nunca van a
+-- aparecer en una búsqueda de GFW porque no transmiten. Prioridad: mmsi
+-- primero (viene verificado contra GFW), matrícula como respaldo (viene
+-- directo del texto, sin verificación externa -- pero matrícula SÍ es una
+-- identidad válida según chk_embarcacion_tiene_identidad, a diferencia de un
+-- nombre suelto). Si no hay ninguna de las dos, sigue sin poder crear la fila.
+DROP FUNCTION IF EXISTS sp_embarcaciones_vincular_o_crear(varchar, varchar, varchar, varchar);
+
 CREATE OR REPLACE FUNCTION sp_embarcaciones_vincular_o_crear(
   p_mmsi varchar,
   p_vessel_name varchar,
   p_bandera varchar,
-  p_gfw_vessel_type varchar
+  p_gfw_vessel_type varchar,
+  p_matricula varchar DEFAULT NULL
 )
 RETURNS uuid
 SECURITY DEFINER SET search_path = public
@@ -214,14 +232,23 @@ DECLARE
   v_mmsi varchar;
   v_tipo tipo_embarcacion;
 BEGIN
-  IF p_mmsi IS NULL THEN
+  IF p_mmsi IS NULL AND p_matricula IS NULL THEN
     RETURN NULL;
   END IF;
-  v_mmsi := left(p_mmsi, 9);
 
-  SELECT e.id INTO v_id FROM embarcaciones e WHERE e.mmsi = v_mmsi;
-  IF v_id IS NOT NULL THEN
-    RETURN v_id;
+  IF p_mmsi IS NOT NULL THEN
+    v_mmsi := left(p_mmsi, 9);
+    SELECT e.id INTO v_id FROM embarcaciones e WHERE e.mmsi = v_mmsi;
+    IF v_id IS NOT NULL THEN
+      RETURN v_id;
+    END IF;
+  END IF;
+
+  IF p_matricula IS NOT NULL THEN
+    SELECT e.id INTO v_id FROM embarcaciones e WHERE e.matricula = p_matricula;
+    IF v_id IS NOT NULL THEN
+      RETURN v_id;
+    END IF;
   END IF;
 
   v_tipo := CASE WHEN upper(coalesce(p_gfw_vessel_type, '')) = 'FISHING'
@@ -229,8 +256,8 @@ BEGIN
                  ELSE 'otro'::tipo_embarcacion END;
 
   BEGIN
-    INSERT INTO embarcaciones (nombre, mmsi, bandera, tipo, gfw_vessel_type)
-    VALUES (coalesce(p_vessel_name, 'Desconocido'), v_mmsi, p_bandera, v_tipo, p_gfw_vessel_type)
+    INSERT INTO embarcaciones (nombre, mmsi, matricula, bandera, tipo, gfw_vessel_type)
+    VALUES (coalesce(p_vessel_name, 'Desconocido'), v_mmsi, p_matricula, p_bandera, v_tipo, p_gfw_vessel_type)
     RETURNING id INTO v_id;
     RETURN v_id;
   EXCEPTION WHEN unique_violation THEN
@@ -276,20 +303,44 @@ END;
 $$;
 
 -- Igual que sp_incidentes_registrar pero para la aprobación de una
--- sugerencia de IA (sin embarcación resuelta, sin lat/lon, sin dedup: la
--- sugerencia ya pasó por su propia validación de "pendiente" antes de esto).
+-- sugerencia de IA (sin lat/lon, sin dedup: la sugerencia ya pasó por su
+-- propia validación de "pendiente" antes de esto). p_embarcacion_id es
+-- opcional: sugerencias.py la resuelve buscando en GFW el nombre que la IA
+-- extrajo del artículo (embarcacion_detectada); si no se pudo resolver a una
+-- embarcación real, queda NULL igual que antes (ver chk_embarcacion_tiene_identidad
+-- en schema.sql: no se puede inventar una fila de embarcación solo con un
+-- nombre de texto libre). p_fecha_deteccion es la fecha de PUBLICACIÓN del
+-- artículo (trafilatura/htmldate, ver fecha_publicacion en incidentes_sugeridos_ia):
+-- se usa en vez de now() porque el hecho ocurrió cuando se publicó la
+-- noticia, no cuando el analista aprobó la sugerencia en el sistema. Si no
+-- se pudo extraer, cae a now() igual que antes. p_embarcacion_nombre_reportado
+-- es el nombre que la IA extrajo del artículo cuando NO se pudo vincular a
+-- una embarcación real (p_embarcacion_id queda NULL en ese caso) -- se
+-- guarda igual como texto de referencia en vez de perderse, y
+-- sp_incidentes_listar lo usa como fallback de display.
+DROP FUNCTION IF EXISTS sp_incidentes_registrar_desde_sugerencia(uuid, text, gravedad_incidente);
+DROP FUNCTION IF EXISTS sp_incidentes_registrar_desde_sugerencia(uuid, text, gravedad_incidente, uuid);
+DROP FUNCTION IF EXISTS sp_incidentes_registrar_desde_sugerencia(uuid, text, gravedad_incidente, uuid, timestamptz);
+
 CREATE OR REPLACE FUNCTION sp_incidentes_registrar_desde_sugerencia(
   p_tipo_infraccion_id uuid,
   p_descripcion text,
-  p_gravedad gravedad_incidente
+  p_gravedad gravedad_incidente,
+  p_embarcacion_id uuid DEFAULT NULL,
+  p_fecha_deteccion timestamptz DEFAULT NULL,
+  p_embarcacion_nombre_reportado varchar DEFAULT NULL
 )
 RETURNS TABLE (id uuid, codigo varchar)
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
 BEGIN
   RETURN QUERY
-  INSERT INTO incidentes (tipo_infraccion_id, descripcion, gravedad, estado, fecha_deteccion)
-  VALUES (p_tipo_infraccion_id, p_descripcion, p_gravedad, 'sospechoso', now())
+  INSERT INTO incidentes (embarcacion_id, embarcacion_nombre_reportado, tipo_infraccion_id, descripcion, gravedad, estado, fecha_deteccion)
+  VALUES (
+    p_embarcacion_id,
+    CASE WHEN p_embarcacion_id IS NULL THEN p_embarcacion_nombre_reportado END,
+    p_tipo_infraccion_id, p_descripcion, p_gravedad, 'sospechoso', coalesce(p_fecha_deteccion, now())
+  )
   RETURNING incidentes.id, incidentes.codigo;
 END;
 $$;
@@ -379,7 +430,7 @@ BEGIN
     END;
   END IF;
 
-  IF v_estado = 'fallida' THEN
+  IF v_estado IN ('fallida', 'descartada') THEN
     UPDATE fuentes_noticias SET estado = 'procesando', procesado_en = NULL WHERE fuentes_noticias.id = v_id;
     RETURN QUERY SELECT v_id, true, 'procesando'::estado_fuente;
   ELSE
@@ -414,6 +465,51 @@ $$;
 -- Sugerencias de IA (cola de validación)
 -- =========================================================
 
+-- Llamada por analyze_news.py antes de crear una sugerencia: ¿ya hay una
+-- sugerencia activa (pendiente/aprobada) o un incidente para esta misma
+-- embarcación (por nombre o matrícula)? Cubre el caso de que dos medios
+-- distintos cubran el mismo hecho con URLs distintas -- sp_fuentes_crear
+-- dedupe por URL exacta nomás, así que eso solo no alcanza. p_nombre/p_matricula
+-- pueden venir NULL si no se extrajo ninguno; en ese caso no hay con qué
+-- comparar y devuelve false.
+CREATE OR REPLACE FUNCTION sp_sugerencias_verificar_duplicado(p_nombre varchar, p_matricula varchar)
+RETURNS boolean
+SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF p_nombre IS NULL AND p_matricula IS NULL THEN
+    RETURN false;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM incidentes_sugeridos_ia s
+    WHERE s.estado IN ('pendiente', 'aprobado')
+      AND (
+        (p_nombre IS NOT NULL AND s.embarcacion_detectada ILIKE p_nombre)
+        OR (p_matricula IS NOT NULL AND s.matricula_detectada = p_matricula)
+      )
+  ) THEN
+    RETURN true;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM incidentes i
+    JOIN embarcaciones e ON e.id = i.embarcacion_id
+    WHERE i.estado != 'descartado'
+      AND (
+        (p_nombre IS NOT NULL AND e.nombre ILIKE p_nombre)
+        OR (p_matricula IS NOT NULL AND e.matricula = p_matricula)
+      )
+  ) THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS sp_sugerencias_listar_pendientes();
+
 CREATE OR REPLACE FUNCTION sp_sugerencias_listar_pendientes()
 RETURNS TABLE (
   id uuid,
@@ -430,7 +526,8 @@ RETURNS TABLE (
   url text,
   dominio varchar,
   tipo_infraccion_nombre varchar,
-  color_indicador color_indicador
+  color_indicador color_indicador,
+  posible_duplicado boolean
 )
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
@@ -438,7 +535,7 @@ BEGIN
   RETURN QUERY
   SELECT s.id, s.fuente_id, s.titular, s.resumen, s.tipo_infraccion_id, s.embarcacion_detectada,
          s.ubicacion_estimada, s.confianza, s.estado, s.incidente_id, s.creado_en,
-         f.url, f.dominio, ti.nombre, ti.color_indicador
+         f.url, f.dominio, ti.nombre, ti.color_indicador, s.posible_duplicado
   FROM incidentes_sugeridos_ia s
   JOIN fuentes_noticias f ON f.id = s.fuente_id
   LEFT JOIN tipos_infraccion ti ON ti.id = s.tipo_infraccion_id
@@ -456,6 +553,8 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS sp_sugerencias_obtener_pendiente(uuid);
+
 CREATE OR REPLACE FUNCTION sp_sugerencias_obtener_pendiente(p_id uuid)
 RETURNS TABLE (
   id uuid,
@@ -463,13 +562,16 @@ RETURNS TABLE (
   titular text,
   resumen text,
   tipo_infraccion_id uuid,
-  gravedad_sugerida gravedad_incidente
+  gravedad_sugerida gravedad_incidente,
+  embarcacion_detectada varchar,
+  matricula_detectada varchar,
+  fecha_publicacion timestamptz
 )
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
 BEGIN
   RETURN QUERY
-  SELECT s.id, s.fuente_id, s.titular, s.resumen, s.tipo_infraccion_id, ti.gravedad_sugerida
+  SELECT s.id, s.fuente_id, s.titular, s.resumen, s.tipo_infraccion_id, ti.gravedad_sugerida, s.embarcacion_detectada, s.matricula_detectada, s.fecha_publicacion
   FROM incidentes_sugeridos_ia s
   LEFT JOIN tipos_infraccion ti ON ti.id = s.tipo_infraccion_id
   WHERE s.id = p_id AND s.estado = 'pendiente';
@@ -487,9 +589,16 @@ BEGIN
 END;
 $$;
 
--- Crea una sugerencia a partir de lo que extrajo Claude en
--- scripts/analyze_news.py (subproceso lanzado en vivo por
--- POST /api/fuentes/analizar).
+-- Crea una sugerencia a partir de lo que extrajo Claude (o la extracción
+-- local de reglas, ver scripts/extraccion_reglas.py) en scripts/analyze_news.py
+-- (subproceso lanzado en vivo por POST /api/fuentes/analizar).
+-- p_fecha_publicacion es la fecha del artículo (trafilatura/htmldate, no la
+-- de Claude/reglas): NULL si no se pudo extraer, y en ese caso
+-- sp_incidentes_registrar_desde_sugerencia cae a now() al aprobar.
+DROP FUNCTION IF EXISTS sp_sugerencias_crear(uuid, text, text, uuid, varchar, varchar, numeric);
+DROP FUNCTION IF EXISTS sp_sugerencias_crear(uuid, text, text, uuid, varchar, varchar, numeric, timestamptz);
+DROP FUNCTION IF EXISTS sp_sugerencias_crear(uuid, text, text, uuid, varchar, varchar, numeric, timestamptz, varchar);
+
 CREATE OR REPLACE FUNCTION sp_sugerencias_crear(
   p_fuente_id uuid,
   p_titular text,
@@ -497,15 +606,18 @@ CREATE OR REPLACE FUNCTION sp_sugerencias_crear(
   p_tipo_infraccion_id uuid,
   p_embarcacion_detectada varchar,
   p_ubicacion_estimada varchar,
-  p_confianza numeric
+  p_confianza numeric,
+  p_fecha_publicacion timestamptz DEFAULT NULL,
+  p_matricula_detectada varchar DEFAULT NULL,
+  p_posible_duplicado boolean DEFAULT false
 )
 RETURNS void
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
 BEGIN
   INSERT INTO incidentes_sugeridos_ia
-    (fuente_id, titular, resumen, tipo_infraccion_id, embarcacion_detectada, ubicacion_estimada, confianza)
-  VALUES (p_fuente_id, p_titular, p_resumen, p_tipo_infraccion_id, p_embarcacion_detectada, p_ubicacion_estimada, p_confianza);
+    (fuente_id, titular, resumen, tipo_infraccion_id, embarcacion_detectada, ubicacion_estimada, confianza, fecha_publicacion, matricula_detectada, posible_duplicado)
+  VALUES (p_fuente_id, p_titular, p_resumen, p_tipo_infraccion_id, p_embarcacion_detectada, p_ubicacion_estimada, p_confianza, p_fecha_publicacion, p_matricula_detectada, p_posible_duplicado);
 END;
 $$;
 

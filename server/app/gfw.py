@@ -1,8 +1,10 @@
+import hashlib
 import json
 import os
 import subprocess
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable, TypeVar
 
@@ -15,6 +17,7 @@ SYNC_SCRIPT = BASE_DIR / "scripts" / "sync_lambayeque.py"
 PYTHON_BIN = os.getenv("PYTHON_BIN", "python")
 
 T = TypeVar("T")
+I = TypeVar("I")
 
 # GFW aplica un límite de solicitudes bastante bajo, y estas rutas se
 # consultan en vivo desde el frontend. Cacheamos por (script, rango,
@@ -28,6 +31,39 @@ _cache: dict[str, tuple[float, object]] = {}
 # el script y las demás esperan y reciben el mismo resultado cacheado.
 _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
+
+# La cache en memoria no sobrevive a un reinicio del proceso -- y en
+# desarrollo, `uvicorn --reload` reinicia el proceso cada vez que se guarda un
+# archivo de server/app/. Sin esto, cada guardado durante desarrollo volvía a
+# pagar el viaje completo a GFW (varios segundos) para volver a mostrar los
+# barcos. Se persiste a disco (además de en memoria) para que un reinicio
+# dentro de la misma ventana de TTL lea el resultado ya calculado.
+CACHE_DIR = BASE_DIR / "server" / ".cache" / "gfw"
+
+
+def _archivo_cache(clave: str) -> Path:
+    return CACHE_DIR / f"{hashlib.sha256(clave.encode()).hexdigest()}.json"
+
+
+def _leer_cache_disco(clave: str) -> tuple[float, object] | None:
+    try:
+        datos = json.loads(_archivo_cache(clave).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if datos.get("clave") != clave or datos.get("expira", 0) <= time.time():
+        return None
+    return (datos["expira"], datos["valor"])
+
+
+def _escribir_cache_disco(clave: str, expira: float, valor: object) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        _archivo_cache(clave).write_text(
+            json.dumps({"clave": clave, "expira": expira, "valor": valor}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass  # la cache en disco es una optimización, no algo de lo que dependa la respuesta
 
 
 def _ejecutar_script(script_path: Path, args: list[str]) -> object:
@@ -56,8 +92,16 @@ def _con_cache(clave: str, ejecutar: Callable[[], T]) -> T:
         cacheado = _cache.get(clave)
         if cacheado and cacheado[0] > time.time():
             return cacheado[1]  # type: ignore[return-value]
+
+        en_disco = _leer_cache_disco(clave)
+        if en_disco:
+            _cache[clave] = en_disco
+            return en_disco[1]  # type: ignore[return-value]
+
         resultado = ejecutar()
-        _cache[clave] = (time.time() + CACHE_TTL_SECONDS, resultado)
+        expira = time.time() + CACHE_TTL_SECONDS
+        _cache[clave] = (expira, resultado)
+        _escribir_cache_disco(clave, expira, resultado)
         return resultado
 
 
@@ -79,6 +123,24 @@ def consultar_gfw_con_cache(
         return _ejecutar_script(SYNC_SCRIPT, args)  # type: ignore[return-value]
 
     return _con_cache(clave, ejecutar)
+
+
+# GFW aplica un límite de solicitudes bastante bajo (ver comentario arriba),
+# así que no se paralelizan las zonas sin límite: 3 a la vez alcanza para
+# bajar el tiempo total de ~5x secuencial a ~2 tandas, sin arriesgar tantos
+# 429 como paralelizar las 5 juntas.
+MAX_ZONAS_CONCURRENTES = 3
+
+
+def ejecutar_por_zonas(zonas: list[I], tarea: Callable[[I], T]) -> list[T]:
+    """Corre `tarea` para cada zona con un pool acotado de hilos (en vez de
+    una por una), preservando el orden de `zonas` en el resultado. Cada zona
+    ya cachea por su propia clave, así que paralelizarlas es seguro: no hay
+    trabajo duplicado, solo se solapa la espera de red de GFW."""
+    if not zonas:
+        return []
+    with ThreadPoolExecutor(max_workers=min(MAX_ZONAS_CONCURRENTES, len(zonas))) as executor:
+        return list(executor.map(tarea, zonas))
 
 
 def iniciar_precarga_periodica(nombre: str, tarea: Callable[[], None], intervalo_segundos: float) -> None:
@@ -103,8 +165,14 @@ def _features_zona_con_cache(desde: str, hasta: str, clave_extra: str, geojson: 
     clave = f"features|{clave_extra}|{desde}|{hasta}"
 
     def ejecutar() -> dict[str, dict]:
-        presencia = gfw_client.obtener_presencia_diaria(desde, hasta, geojson)
-        esfuerzo = gfw_client.obtener_esfuerzo_diario(desde, hasta, geojson)
+        # Presencia y esfuerzo son consultas independientes a GFW (~10-15s
+        # cada una con resolución DIARIA) -- se piden en paralelo en vez de
+        # una tras otra para no sumar sus tiempos.
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futuro_presencia = executor.submit(gfw_client.obtener_presencia_diaria, desde, hasta, geojson)
+            futuro_esfuerzo = executor.submit(gfw_client.obtener_esfuerzo_diario, desde, hasta, geojson)
+            presencia = futuro_presencia.result()
+            esfuerzo = futuro_esfuerzo.result()
         return features_mod.construir_features_flota(presencia, esfuerzo)
 
     return _con_cache(clave, ejecutar)

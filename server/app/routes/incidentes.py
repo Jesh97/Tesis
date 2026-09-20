@@ -41,7 +41,17 @@ def listar(
         {
             "id": r["codigo"],
             "vessel": r["vessel"] or "Desconocido",
-            "vesselCode": f"MMSI: {r['mmsi']}" if r["mmsi"] else (f"MAT: {r['matricula']}" if r["matricula"] else "Sin identificar"),
+            # "vessel" puede venir del nombre real vinculado a GFW (vessel_verificado=True)
+            # o del nombre que la fuente reportó sin que se pudiera verificar
+            # (ver embarcacion_nombre_reportado en incidentes) -- se distingue
+            # en vez de mostrar "Sin identificar" para un nombre que sí se
+            # conoce, solo que no está confirmado.
+            "vesselCode": (
+                f"MMSI: {r['mmsi']}" if r["mmsi"]
+                else f"MAT: {r['matricula']}" if r["matricula"]
+                else "No verificado (según la fuente)" if r["vessel"] and not r["vessel_verificado"]
+                else "Sin identificar"
+            ),
             "infraction": r["infraction"],
             "dateTime": r["fecha_deteccion"],
             "severity": r["severity"],
@@ -104,11 +114,12 @@ def _vincular_o_crear_embarcacion(
     vessel_name: str | None,
     bandera: str | None = None,
     gfw_vessel_type: str | None = None,
+    matricula: str | None = None,
 ) -> str | None:
     ejecutar_sp(
         cur,
-        "SELECT sp_embarcaciones_vincular_o_crear(%s, %s, %s, %s) AS id",
-        (mmsi, vessel_name, bandera, gfw_vessel_type),
+        "SELECT sp_embarcaciones_vincular_o_crear(%s, %s, %s, %s, %s) AS id",
+        (mmsi, vessel_name, bandera, gfw_vessel_type, matricula),
     )
     return cur.fetchone()["id"]
 

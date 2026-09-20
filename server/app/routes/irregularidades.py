@@ -1,7 +1,12 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from ..db import ejecutar_sp, get_cursor
-from ..gfw import consultar_actividad_con_cache, consultar_gfw_con_cache, consultar_probabilidad_zona_protegida_con_cache
+from ..gfw import (
+    consultar_actividad_con_cache,
+    consultar_gfw_con_cache,
+    consultar_probabilidad_zona_protegida_con_cache,
+    ejecutar_por_zonas,
+)
 
 router = APIRouter()
 
@@ -38,8 +43,8 @@ def zonas_criticas() -> list[dict]:
 def zona_protegida(desde: str = Query(default=DEMO_DESDE), hasta: str = Query(default=DEMO_HASTA)):
     try:
         zonas = zonas_criticas()
-        resultados = []
-        for zona in zonas:
+
+        def procesar(zona: dict) -> dict:
             try:
                 barcos = consultar_gfw_con_cache(desde, hasta, f"zona:{zona['id']}", zona["poligono"])
                 try:
@@ -49,9 +54,14 @@ def zona_protegida(desde: str = Query(default=DEMO_DESDE), hasta: str = Query(de
                     probabilidades = {}
                 for barco in barcos:
                     barco["probabilidadModelo"] = probabilidades.get(barco.get("mmsi"))
-                resultados.append({"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": barcos, "error": None})
+                return {"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": barcos, "error": None}
             except Exception as err:
-                resultados.append({"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": [], "error": str(err)})
+                return {"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": [], "error": str(err)}
+
+        # Cada zona consulta GFW por su cuenta (~10-20s): procesarlas en
+        # paralelo (en vez de una por una) es lo que baja el tiempo total de
+        # carga de la página de monitoreo.
+        resultados = ejecutar_por_zonas(zonas, procesar)
         return {"desde": desde, "hasta": hasta, "zonas": resultados}
     except Exception as err:
         raise HTTPException(status_code=500, detail={"error": str(err)}) from err
@@ -66,13 +76,15 @@ def zona_protegida(desde: str = Query(default=DEMO_DESDE), hasta: str = Query(de
 def actividad(desde: str = Query(default=ACTIVIDAD_DEMO_DESDE), hasta: str = Query(default=ACTIVIDAD_DEMO_HASTA)):
     try:
         zonas = zonas_criticas()
-        resultados = []
-        for zona in zonas:
+
+        def procesar(zona: dict) -> dict:
             try:
                 barcos = consultar_actividad_con_cache(desde, hasta, f"zona:{zona['id']}", zona["poligono"])
-                resultados.append({"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": barcos, "error": None})
+                return {"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": barcos, "error": None}
             except Exception as err:
-                resultados.append({"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": [], "error": str(err)})
+                return {"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": [], "error": str(err)}
+
+        resultados = ejecutar_por_zonas(zonas, procesar)
         return {"desde": desde, "hasta": hasta, "zonas": resultados}
     except Exception as err:
         raise HTTPException(status_code=500, detail={"error": str(err)}) from err

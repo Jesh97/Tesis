@@ -5,7 +5,7 @@ export interface Fuente {
   id: string
   url: string
   dominio: string
-  estado: 'pendiente' | 'procesando' | 'exitosa' | 'fallida'
+  estado: 'pendiente' | 'procesando' | 'exitosa' | 'fallida' | 'descartada'
   creado_en: string
   procesado_en: string | null
 }

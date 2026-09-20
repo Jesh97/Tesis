@@ -69,6 +69,13 @@ export function ValidationCard({ item, onAprobar, onRechazar, procesando }: Vali
             La IA no pudo determinar el tipo de infracción; se debe indicar manualmente antes de aprobar.
           </p>
         )}
+
+        {item.posible_duplicado && (
+          <p className="mt-2 text-[11px] text-amber-600">
+            Posible duplicado: ya hay otra sugerencia o incidente activo para esta misma embarcación (puede ser la
+            misma noticia cubierta por otro medio).
+          </p>
+        )}
       </div>
 
       <div className="mt-3 flex items-center gap-2">

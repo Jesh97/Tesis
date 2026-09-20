@@ -5,7 +5,9 @@ import { useFuentes } from '../hooks/useFuentes'
 
 export function NewsPage() {
   const { fuentes, analizar } = useFuentes()
-  const fuentesEnProceso = fuentes.filter((f) => f.estado === 'procesando' || f.estado === 'fallida')
+  const fuentesEnProceso = fuentes.filter(
+    (f) => f.estado === 'procesando' || f.estado === 'fallida' || f.estado === 'descartada',
+  )
 
   return (
     <DashboardLayout title="Sistema de Detección de Pesca Ilegal" searchPlaceholder="Buscar...">
