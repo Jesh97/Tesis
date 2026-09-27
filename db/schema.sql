@@ -369,13 +369,26 @@ CREATE INDEX idx_sugerencias_fuente ON incidentes_sugeridos_ia (fuente_id);
 -- Vistas para el dashboard de reportes (ReportsPage)
 -- =========================================================
 
--- Tarjetas de resumen: Total Incidentes / Embarc. Capturadas /
--- Alertas Procesadas / Zonas Críticas
-CREATE OR REPLACE VIEW vw_reportes_resumen AS
+-- Tarjetas de resumen: Total Incidentes / Incidentes Confirmados /
+-- Incidentes Pendientes / Zonas Críticas.
+--
+-- Antes esta vista traía "embarcaciones_capturadas" (count de
+-- embarcaciones.capturada) y "alertas_procesadas" (count de
+-- alertas_monitoreo con estado <> 'activa'). Ninguna de las dos columnas la
+-- toca NINGUNA ruta de la app en vivo: "capturada" no tiene ningún control
+-- en la UI que la ponga en true, y alertas_monitoreo nunca se inserta desde
+-- código (las alertas reales del mapa se calculan al vuelo desde GFW en
+-- server/app/gfw.py, no se persisten en esa tabla) -- las dos quedaban
+-- siempre en 0 salvo que alguien las cargara a mano en seed.sql. Se
+-- reemplazan por el desglose de incidentes.estado, que sí cambia con el uso
+-- real de la app (sp_incidentes_confirmar/sp_incidentes_descartar).
+DROP VIEW IF EXISTS vw_reportes_resumen;
+
+CREATE VIEW vw_reportes_resumen AS
 SELECT
   (SELECT count(*) FROM incidentes) AS total_incidentes,
-  (SELECT count(*) FROM embarcaciones WHERE capturada) AS embarcaciones_capturadas,
-  (SELECT count(*) FROM alertas_monitoreo WHERE estado <> 'activa') AS alertas_procesadas,
+  (SELECT count(*) FROM incidentes WHERE estado = 'confirmado') AS incidentes_confirmados,
+  (SELECT count(*) FROM incidentes WHERE estado = 'sospechoso') AS incidentes_pendientes,
   (SELECT count(*) FROM zonas WHERE es_critica) AS zonas_criticas;
 
 -- Evolución de Incidentes (Últimos 12 Meses)

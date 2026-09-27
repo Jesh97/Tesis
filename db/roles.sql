@@ -43,7 +43,11 @@ GRANT EXECUTE ON FUNCTION
   sp_incidentes_mmsi_reportados(),
   sp_incidentes_descartar(varchar),
   sp_incidentes_confirmar(varchar),
-  sp_incidentes_registrar(uuid, uuid, text, gravedad_incidente, numeric, numeric, timestamptz),
+  -- Firma completa con los 8 parámetros declarados (incluido p_zona_id, que
+  -- tiene DEFAULT NULL): un GRANT con la firma vieja de 7 fallaría, porque
+  -- CREATE OR REPLACE con un parámetro nuevo al final cambia la firma
+  -- catalogada de la función aunque siga siendo invocable con 7 argumentos.
+  sp_incidentes_registrar(uuid, uuid, text, gravedad_incidente, numeric, numeric, timestamptz, uuid),
   sp_incidentes_registrar_desde_sugerencia(uuid, text, gravedad_incidente, uuid, timestamptz, varchar),
   sp_tipos_infraccion_listar(),
   sp_tipos_infraccion_obtener(uuid),

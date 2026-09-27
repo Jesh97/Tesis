@@ -3,6 +3,7 @@ import { apiFetch } from '../../../lib/api'
 
 export interface LambayequeVessel {
   embarcacionId: string | null
+  vesselId: string | null
   nombre: string
   mmsi: string | null
   flag: string | null

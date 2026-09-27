@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Badge } from '../../../components/ui/Badge'
 import { XIcon } from '../../../components/icons'
-import type { Incident, IncidentSeverity } from '../data/mockIncidents'
+import type { Incident, IncidentSeverity } from '../types'
 
 const severityConfig: Record<IncidentSeverity, { label: string; variant: 'red' | 'amber' | 'gray' }> = {
   alto: { label: 'Alto', variant: 'red' },

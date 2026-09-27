@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from ..gfw import consultar_gfw_con_cache
+from ..gfw import consultar_gfw_con_cache, consultar_ultimo_puerto_con_cache
 
 router = APIRouter()
 
@@ -24,6 +24,19 @@ def gfw_lambayeque(desde: str = Query(default=DEMO_DESDE), hasta: str = Query(de
     except Exception as err:
         raise HTTPException(status_code=502, detail={"error": str(err)}) from err
     return {"desde": desde, "hasta": hasta, "total": len(barcos), "barcos": barcos}
+
+
+# Popup de embarcación en el mapa (MapView.tsx): consulta bajo demanda (al
+# hacer click, no para toda la flota) la última visita a puerto real de la
+# Events API de GFW -- ver gfw_client.obtener_ultima_visita_puerto y el
+# comentario ahí sobre por qué esto sí está disponible con el token actual.
+@router.get("/gfw/ultimo-puerto")
+def ultimo_puerto(vesselId: str = Query(...)):
+    try:
+        resultado = consultar_ultimo_puerto_con_cache(vesselId)
+    except Exception as err:
+        raise HTTPException(status_code=502, detail={"error": str(err)}) from err
+    return resultado or {"puerto": None}
 
 
 def _mapear_tipo(vessel_type: str | None) -> str:

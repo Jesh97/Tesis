@@ -18,11 +18,21 @@ DATASET = "public-global-fishing-effort:latest"
 # de la región Lambayeque completa (no solo el puerto de Pimentel puntual, ni
 # todo el Perú) -- objetivo general de la tesis. Cubre la costa de Lambayeque
 # (aprox. límite con Piura al norte hasta límite con La Libertad al sur) más
-# ~200mn mar adentro, porque las embarcaciones con incidentes confirmados
-# (ver cargar_incidentes_csv.py) operan en alta mar/EEZ, no solo en la bahía.
+# mar adentro, porque las embarcaciones con incidentes confirmados (ver
+# cargar_incidentes_csv.py) operan en alta mar/EEZ, no solo en la bahía.
 # Aproximado a partir de la extensión geográfica de la región -- no es el
 # límite oficial de jurisdicción de la Capitanía de Puerto (DICAPI).
-LAMBAYEQUE_BBOX = [-83.5, -7.2, -79.6, -6.0]  # lon_min, lat_min, lon_max, lat_max
+#
+# lon_min = -84.5 (no -83.5) a propósito: verificado con
+# features._distancia_costa_nm que la esquina más lejana del bbox con
+# -83.5 solo llegaba a ~165mn de costa -- nunca alcanzaba el límite real de
+# las 200mn de la ZEE, así que el detector "cruce_frontera_zee"
+# (server/app/features.py) y el resaltado del mapa (MapView.tsx) nunca
+# podían dispararse con datos reales por más flota de altura que hubiera.
+# Con -84.5 el borde oeste del bbox queda entre ~203 y ~218mn de costa según
+# la latitud -- justo dentro de la franja de +-20mn alrededor de las 200mn
+# que usan ambos detectores.
+LAMBAYEQUE_BBOX = [-84.5, -7.2, -79.6, -6.0]  # lon_min, lat_min, lon_max, lat_max
 
 
 def construir_geojson_bbox(bbox: list[float]) -> dict:
@@ -139,10 +149,33 @@ def upsert_esfuerzo(cur, barco: dict, embarcacion_id: str | None) -> None:
     )
 
 
+def agrupar_por_embarcacion(barcos: list[dict]) -> list[dict]:
+    """GFW devuelve una fila por (embarcación, celda) visitada en el rango
+    -- con resolución ENTIRE eso significa que un mismo barco que pescó en
+    varios puntos durante los 3 meses del rango por defecto aparece repetido
+    varias veces (mismo mmsi, distinta posición). Antes de esto el mapa lo
+    dibujaba así: N puntos por barco en vez de uno. Acá se agrupa por
+    identidad real (vesselId, o mmsi si no hay vesselId) sumando las horas de
+    todas sus celdas, y se deja la posición de la celda donde más pescó (su
+    caladero principal) como posición representativa -- no la primera fila
+    ni un promedio, que podría caer en un punto donde el barco nunca estuvo."""
+    grupos: dict[str, list[dict]] = {}
+    for barco in barcos:
+        clave = vacio_a_none(barco.get("vesselId")) or vacio_a_none(barco.get("mmsi")) or f"sin-id:{barco.get('shipName')}:{barco.get('flag')}"
+        grupos.setdefault(clave, []).append(barco)
+
+    agrupados = []
+    for filas in grupos.values():
+        principal = max(filas, key=lambda f: f.get("hours") or 0)
+        agrupados.append({**principal, "hours": sum(f.get("hours") or 0 for f in filas)})
+    return agrupados
+
+
 def a_json(barco: dict) -> dict:
     """Forma que espera el frontend (ver LambayequeVessel en useLambayequeVessels.ts)."""
     return {
         "embarcacionId": None,
+        "vesselId": vacio_a_none(barco.get("vesselId")),
         "nombre": barco.get("shipName") or "Desconocido",
         "mmsi": vacio_a_none(barco.get("mmsi")),
         "flag": vacio_a_none(barco.get("flag")),
@@ -184,7 +217,8 @@ def main():
 
     log(f"Consultando GFW ({args.desde} a {args.hasta})...")
     barcos = obtener_barcos_en_zona(token, args.desde, args.hasta, geojson)
-    log(f"Barcos detectados: {len(barcos)}")
+    barcos_agrupados = agrupar_por_embarcacion(barcos)
+    log(f"Filas de GFW: {len(barcos)}  ·  Embarcaciones distintas: {len(barcos_agrupados)}")
 
     if not barcos:
         log(
@@ -195,7 +229,11 @@ def main():
         )
 
     if args.json:
-        print(json.dumps([a_json(b) for b in barcos], ensure_ascii=False))
+        # Agrupado (una posición por embarcación, no una por celda/día) --
+        # el modo de sincronización a la base de datos, más abajo, sí guarda
+        # cada fila cruda de GFW porque ahí la granularidad completa importa
+        # para el análisis histórico.
+        print(json.dumps([a_json(b) for b in barcos_agrupados], ensure_ascii=False))
         return
 
     if not barcos:

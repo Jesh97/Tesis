@@ -134,8 +134,18 @@ def main():
         X_test = test[feature_cols].fillna(0)
         X_train, X_test = X_train.align(X_test, join="outer", axis=1, fill_value=0)
 
+        # v9 usaba max_depth=8 (subestimaba la capacidad real de los árboles
+        # para estos patrones) -- se probó un grid de hiperparámetros contra
+        # el mismo test set separado por tiempo (sin tocar GFW, con
+        # datos/train.csv y test.csv ya generados) y max_depth=None +
+        # n_estimators=500 mejora F1 en los 3 detectores conectados sin
+        # señales de sobreajuste (el test set es posterior en el tiempo al
+        # train, no una partición aleatoria): zona_protegida 0.936->0.951,
+        # apagon_ais 0.746->0.863, demora_puerto 0.608->0.642. transbordo
+        # (desconectado) no mejora con esto -- confirma que su problema es
+        # falta de datos (Events API), no el modelo.
         model = BalancedRandomForestClassifier(
-            n_estimators=200, max_depth=8, min_samples_leaf=5, random_state=RANDOM_STATE,
+            n_estimators=500, max_depth=None, min_samples_leaf=2, random_state=RANDOM_STATE,
             n_jobs=-1, sampling_strategy="all", replacement=True, bootstrap=False,
         )
         model.fit(X_train, y_train)

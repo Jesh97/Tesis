@@ -35,6 +35,9 @@ export interface DatosInicialesIncidente {
   /** Nombre del tipo de infracción (tal como está en el catálogo) a
    * preseleccionar apenas cargue -- el analista igual puede cambiarlo. */
   tipoInfraccionNombre?: string
+  /** Zona crítica de la que vino la alerta (ver MonitoringPage.tsx) -- se
+   * reenvía tal cual al registrar, no es un dato que el analista edite. */
+  zonaId?: string
 }
 
 export function ReportarIncidenteModal({
@@ -143,6 +146,7 @@ export function ReportarIncidenteModal({
       lon: ubicacion?.lon,
       bandera: ubicacion?.flag ?? undefined,
       vesselType: ubicacion?.vesselType ?? undefined,
+      zonaId: datosIniciales?.zonaId,
     })
     if (codigo) {
       setCodigoRegistrado(codigo)

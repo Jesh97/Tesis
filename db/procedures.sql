@@ -269,6 +269,15 @@ $$;
 -- Registra un incidente (alerta de monitoreo o reporte manual). Si ya existe
 -- un incidente activo (no descartado) para la misma embarcación con el mismo
 -- tipo de infracción, rechaza el duplicado en vez de insertar.
+--
+-- p_zona_id (agregado): antes de esto, NINGÚN incidente creado desde la app
+-- en vivo quedaba vinculado a una zona (el parámetro no existía), así que
+-- vw_zonas_top/"Zonas con Mayor Incidencia" en el dashboard quedaba siempre
+-- vacío pese a haber incidentes reales -- las alertas del mapa (AlertCard)
+-- SÍ conocen su zona (zona_protegida/apagon_ais/etc. se calculan por zona
+-- crítica), solo que nunca se lo pasaban a este procedimiento. Va al final
+-- con DEFAULT NULL para no romper la firma existente: un reporte manual
+-- (sin alerta de por medio) sigue sin zona, que es lo correcto.
 CREATE OR REPLACE FUNCTION sp_incidentes_registrar(
   p_embarcacion_id uuid,
   p_tipo_infraccion_id uuid,
@@ -276,7 +285,8 @@ CREATE OR REPLACE FUNCTION sp_incidentes_registrar(
   p_gravedad gravedad_incidente,
   p_lat numeric,
   p_lon numeric,
-  p_fecha timestamptz
+  p_fecha timestamptz,
+  p_zona_id uuid DEFAULT NULL
 )
 RETURNS TABLE (id uuid, codigo varchar)
 SECURITY DEFINER SET search_path = public
@@ -296,8 +306,8 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  INSERT INTO incidentes (embarcacion_id, tipo_infraccion_id, descripcion, gravedad, estado, latitud, longitud, fecha_deteccion)
-  VALUES (p_embarcacion_id, p_tipo_infraccion_id, p_descripcion, p_gravedad, 'sospechoso', p_lat, p_lon, coalesce(p_fecha, now()))
+  INSERT INTO incidentes (embarcacion_id, tipo_infraccion_id, descripcion, gravedad, estado, latitud, longitud, fecha_deteccion, zona_id)
+  VALUES (p_embarcacion_id, p_tipo_infraccion_id, p_descripcion, p_gravedad, 'sospechoso', p_lat, p_lon, coalesce(p_fecha, now()), p_zona_id)
   RETURNING incidentes.id, incidentes.codigo;
 END;
 $$;
@@ -637,8 +647,16 @@ $$;
 -- Reportes (envuelven las vistas de db/schema.sql)
 -- =========================================================
 
-CREATE OR REPLACE FUNCTION sp_reportes_resumen()
-RETURNS TABLE (total_incidentes bigint, embarcaciones_capturadas bigint, alertas_procesadas bigint, zonas_criticas bigint)
+-- Postgres no permite cambiar las columnas de retorno de una función vía
+-- CREATE OR REPLACE (a diferencia de solo agregar un parámetro con DEFAULT
+-- al final, como en sp_incidentes_registrar arriba) -- hace falta el DROP.
+-- Ver el comentario en vw_reportes_resumen (schema.sql) sobre por qué
+-- cambiaron las columnas: embarcaciones_capturadas/alertas_procesadas nunca
+-- se podían obtener usando la app en vivo.
+DROP FUNCTION IF EXISTS sp_reportes_resumen();
+
+CREATE FUNCTION sp_reportes_resumen()
+RETURNS TABLE (total_incidentes bigint, incidentes_confirmados bigint, incidentes_pendientes bigint, zonas_criticas bigint)
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
 BEGIN

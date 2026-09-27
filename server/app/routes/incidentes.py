@@ -11,6 +11,7 @@ NOMBRE_TIPO_INFRACCION_POR_ALERTA = {
     "zona_protegida": "Pesca en Zona Prohibida",
     "apagon_ais": "Pérdida de Señal AIS",
     "demora_puerto": "Encuentro Sospechoso en Alta Mar",
+    "cruce_frontera_zee": "Incursión en Zona Económica Exclusiva",
 }
 
 
@@ -141,6 +142,10 @@ def registrar(body: dict = Body(...)):
     fecha = body.get("fecha")  # ISO date opcional; None -> now()
     bandera = body.get("bandera")  # opcional: viene de "Buscar en GFW" en el formulario
     gfw_vessel_type = body.get("vesselType")
+    # Solo viene con alertas del mapa (zona_protegida/apagon_ais/demora_puerto/
+    # cruce_frontera_zee se calculan por zona crítica) -- un reporte manual no
+    # tiene una zona asociada y queda en None, que es lo correcto.
+    zona_id = body.get("zonaId")
 
     if not isinstance(descripcion, str) or not descripcion.strip():
         raise HTTPException(status_code=400, detail={"error": 'Falta "descripcion"'})
@@ -177,8 +182,8 @@ def registrar(body: dict = Body(...)):
         # tras recargar el mapa) vive dentro de sp_incidentes_registrar.
         ejecutar_sp(
             cur,
-            "SELECT * FROM sp_incidentes_registrar(%s, %s, %s, %s, %s, %s, %s)",
-            (embarcacion_id, tipo["id"], descripcion.strip(), gravedad, lat, lon, fecha),
+            "SELECT * FROM sp_incidentes_registrar(%s, %s, %s, %s, %s, %s, %s, %s)",
+            (embarcacion_id, tipo["id"], descripcion.strip(), gravedad, lat, lon, fecha, zona_id),
         )
         incidente = cur.fetchone()
 

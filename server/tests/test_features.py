@@ -11,11 +11,11 @@ from app.features import (
     ZEE_NM,
     _distancia_costa_nm,
     _flags_zona,
-    _puerto_mas_cercano,
     _zscore,
     construir_features_flota,
     haversine_km,
     haversine_nm,
+    puerto_mas_cercano,
 )
 
 CALLAO_LAT, CALLAO_LON = -12.05, -77.15  # coincide con PUERTOS_PERU y COSTA_PERU
@@ -49,7 +49,7 @@ def test_distancia_costa_en_punto_de_la_costa_es_cero():
 
 
 def test_puerto_mas_cercano_reconoce_callao():
-    nombre, distancia = _puerto_mas_cercano(CALLAO_LAT, CALLAO_LON)
+    nombre, distancia = puerto_mas_cercano(CALLAO_LAT, CALLAO_LON)
     assert nombre == "CALLAO"
     assert distancia == 0.0
 

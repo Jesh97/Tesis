@@ -9,6 +9,13 @@ export interface ActividadSospechosa {
   lon: number
   apagonAis: { detectado: true; diasSinSenal: number; probabilidad: number } | null
   demoraPuerto: { detectado: true; diasLejosDePuerto: number; probabilidad: number } | null
+  cruceFronteraZee: {
+    detectado: true
+    distCostaAntesNm: number
+    distCostaAhoraNm: number
+    diasSinSenal: number
+    probabilidad: number
+  } | null
 }
 
 export interface ZonaConActividad {

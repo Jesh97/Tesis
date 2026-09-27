@@ -230,15 +230,6 @@ export function HistoryIcon(props: IconProps) {
   )
 }
 
-export function HospitalIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="4" y="4" width="16" height="16" rx="3" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8M8 12h8" />
-    </svg>
-  )
-}
-
 export function SearchIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
@@ -365,15 +356,6 @@ export function TrendingUpIcon(props: IconProps) {
   )
 }
 
-export function MoreVerticalIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="12" cy="5" r="1.3" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
 
 export function MapPinIcon(props: IconProps) {
   return (

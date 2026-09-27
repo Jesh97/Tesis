@@ -36,6 +36,7 @@ const NOMBRE_TIPO_INFRACCION_POR_ALERTA: Record<TipoAlerta, string> = {
   zona_protegida: 'Pesca en Zona Prohibida',
   apagon_ais: 'Pérdida de Señal AIS',
   demora_puerto: 'Encuentro Sospechoso en Alta Mar',
+  cruce_frontera_zee: 'Incursión en Zona Económica Exclusiva',
 }
 
 export function MonitoringPage() {
@@ -64,13 +65,18 @@ export function MonitoringPage() {
         lon: barco.lon,
         latitude: formatearCoordenada(barco.lat, 'N', 'S'),
         longitude: formatearCoordenada(barco.lon, 'E', 'O'),
+        zonaId: zona.zonaId,
       })),
     )
 
     const deActividad = zonasActividad.flatMap((zona) =>
       zona.barcos.map((barco) => {
         const motivos: string[] = []
-        if (barco.apagonAis) {
+        if (barco.cruceFronteraZee) {
+          motivos.push(
+            `apagó la señal AIS a ${barco.cruceFronteraZee.distCostaAntesNm}mn de costa (cerca del límite de las 200mn) y reapareció ${barco.cruceFronteraZee.diasSinSenal} días después a ${barco.cruceFronteraZee.distCostaAhoraNm}mn, ya dentro de la ZEE peruana${barco.flag ? ` (bandera: ${barco.flag})` : ''}`,
+          )
+        } else if (barco.apagonAis) {
           motivos.push(
             `sin señal AIS por ${barco.apagonAis.diasSinSenal} días (top 10% de la flota de "${zona.zonaNombre}")`,
           )
@@ -80,9 +86,14 @@ export function MonitoringPage() {
             `${barco.demoraPuerto.diasLejosDePuerto} días seguidos lejos de puerto (top 10% de la flota)`,
           )
         }
+        const tipoAlerta: TipoAlerta = barco.cruceFronteraZee
+          ? 'cruce_frontera_zee'
+          : barco.apagonAis
+            ? 'apagon_ais'
+            : 'demora_puerto'
         return {
           key: `actividad:${zona.zonaId}:${barco.mmsi}`,
-          tipoAlerta: (barco.apagonAis ? 'apagon_ais' : 'demora_puerto') as TipoAlerta,
+          tipoAlerta,
           vessel: barco.nombre,
           mmsi: barco.mmsi,
           flag: barco.flag,
@@ -92,6 +103,7 @@ export function MonitoringPage() {
           lon: barco.lon,
           latitude: formatearCoordenada(barco.lat, 'N', 'S'),
           longitude: formatearCoordenada(barco.lon, 'E', 'O'),
+          zonaId: zona.zonaId,
         }
       }),
     )
@@ -154,6 +166,7 @@ export function MonitoringPage() {
             lon: alertaAReportar.lon,
             flag: alertaAReportar.flag,
             tipoInfraccionNombre: NOMBRE_TIPO_INFRACCION_POR_ALERTA[alertaAReportar.tipoAlerta],
+            zonaId: alertaAReportar.zonaId,
           }}
         />
       )}

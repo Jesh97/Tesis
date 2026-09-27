@@ -5,6 +5,7 @@ import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, TypeVar
 
@@ -80,7 +81,7 @@ def _ejecutar_script(script_path: Path, args: list[str]) -> object:
         raise RuntimeError(f"No se pudo interpretar la salida del script: {proc.stdout[:300]}")
 
 
-def _con_cache(clave: str, ejecutar: Callable[[], T]) -> T:
+def _con_cache(clave: str, ejecutar: Callable[[], T], ttl_segundos: float = CACHE_TTL_SECONDS) -> T:
     cacheado = _cache.get(clave)
     if cacheado and cacheado[0] > time.time():
         return cacheado[1]  # type: ignore[return-value]
@@ -99,7 +100,7 @@ def _con_cache(clave: str, ejecutar: Callable[[], T]) -> T:
             return en_disco[1]  # type: ignore[return-value]
 
         resultado = ejecutar()
-        expira = time.time() + CACHE_TTL_SECONDS
+        expira = time.time() + ttl_segundos
         _cache[clave] = (expira, resultado)
         _escribir_cache_disco(clave, expira, resultado)
         return resultado
@@ -195,6 +196,14 @@ def consultar_actividad_con_cache(
         demora = modelo.predecir("demora_puerto", datos["features"])
         if not apagon["detectado"] and not demora["detectado"]:
             continue
+
+        # Combina el apagón de AIS ya detectado por el modelo entrenado con la
+        # señal geográfica de features.cruce_frontera_zee_tras_hueco: solo se
+        # marca cuando además de irse la señal, la embarcación estaba cerca o
+        # fuera del límite de las 200mn ANTES de apagarse y reaparece dentro
+        # de la ZEE peruana -- ver el comentario en features.py.
+        cruce_frontera = apagon["detectado"] and datos["cruce_frontera_zee_tras_hueco"]
+
         resultados.append({
             "mmsi": mmsi,
             "nombre": datos["nombre"],
@@ -209,8 +218,65 @@ def consultar_actividad_con_cache(
                 {"detectado": True, "diasLejosDePuerto": datos["dias_lejos_de_puerto"], "probabilidad": demora["probabilidad"]}
                 if demora["detectado"] else None
             ),
+            "cruceFronteraZee": (
+                {
+                    "detectado": True,
+                    "distCostaAntesNm": round(datos["dist_costa_anterior_nm"], 1),
+                    "distCostaAhoraNm": round(datos["dist_costa_actual_nm"], 1),
+                    "diasSinSenal": datos["dias_sin_senal"],
+                    "probabilidad": apagon["probabilidad"],
+                }
+                if cruce_frontera else None
+            ),
         })
     return resultados
+
+
+# TTL más largo que CACHE_TTL_SECONDS: a diferencia de la posición de un
+# barco (que cambia todo el tiempo), su última visita a puerto conocida rara
+# vez cambia en el corto plazo, y esta consulta es bajo demanda (un click del
+# analista, no una precarga masiva) -- no tiene sentido volver a golpear la
+# Events API de GFW cada 10 minutos por el mismo barco.
+CACHE_TTL_ULTIMO_PUERTO_SEGUNDOS = 6 * 60 * 60  # 6 horas
+
+
+def consultar_ultimo_puerto_con_cache(vessel_id: str) -> dict | None:
+    """Última visita a puerto real (Events API) para un vessel_id de GFW.
+    Se cachea por separado de consultar_gfw_con_cache/_con_cache (TTL propio,
+    ver arriba) porque se pide bajo demanda por barco, no por zona/rango."""
+    clave = f"ultimo_puerto|{vessel_id}"
+
+    def ejecutar() -> dict | None:
+        resultado = gfw_client.obtener_ultima_visita_puerto(vessel_id)
+        if resultado is None or not resultado.get("fin"):
+            return resultado
+
+        fin = datetime.fromisoformat(resultado["fin"].replace("Z", "+00:00"))
+        dias_desde_salida = (datetime.now(timezone.utc) - fin).days
+
+        # "Zona no autorizada": el ancla real (Events API) quedó lejos de
+        # cualquiera de los 13 puertos oficiales -- ver
+        # features.UMBRAL_ZONA_NO_AUTORIZADA_NM para cómo se calibró el
+        # umbral con datos reales (evita marcar sub-muelles de un puerto
+        # real, como "MARQUEZ" en Callao, como si fueran clandestinos).
+        puerto_oficial_cercano = None
+        dist_puerto_oficial_nm = None
+        zona_no_autorizada = False
+        if resultado.get("lat") is not None and resultado.get("lon") is not None:
+            puerto_oficial_cercano, dist_puerto_oficial_nm = features_mod.puerto_mas_cercano(resultado["lat"], resultado["lon"])
+            zona_no_autorizada = dist_puerto_oficial_nm > features_mod.UMBRAL_ZONA_NO_AUTORIZADA_NM
+
+        return {
+            "puerto": resultado["puerto"],
+            "fechaSalida": resultado["fin"],
+            "diasDesdeSalida": dias_desde_salida,
+            "duracionHorasEnPuerto": resultado["duracion_horas"],
+            "zonaNoAutorizada": zona_no_autorizada,
+            "puertoOficialMasCercano": puerto_oficial_cercano,
+            "distPuertoOficialNm": round(dist_puerto_oficial_nm, 1) if dist_puerto_oficial_nm is not None else None,
+        }
+
+    return _con_cache(clave, ejecutar, ttl_segundos=CACHE_TTL_ULTIMO_PUERTO_SEGUNDOS)
 
 
 def consultar_probabilidad_zona_protegida_con_cache(

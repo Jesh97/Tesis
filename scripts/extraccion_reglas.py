@@ -166,6 +166,37 @@ RE_SIN_AUTORIZACION = re.compile(
     re.IGNORECASE,
 )
 
+# Igual que RESERVA_ARTESANAL_NM en server/app/features.py: las 5mn desde
+# costa reservadas en exclusiva para pesca artesanal (D.L. 25977, art. 9).
+# Muchas notas de "pesca de arrastre" reportan la distancia exacta a la costa
+# en vez de decir "zona prohibida"/"reserva de 5 millas" -- caso real: "venía
+# realizando pesca tipo arrastre a 3.5 millas de tierra" (andina.pe, embarcación
+# "Mantaro") no matcheaba ninguna palabra de TIPO_INFRACCION_PALABRAS aunque
+# 3.5mn < 5mn es exactamente la infracción.
+RESERVA_ARTESANAL_NM = 5.0
+
+RE_MILLAS_DE_COSTA = re.compile(
+    r"(\d+(?:[.,]\d+)?)\s*millas?(?:\s+n[aá]uticas?)?\s+de\s+(?:la\s+)?(?:costa|tierra|orilla|litoral)",
+    re.IGNORECASE,
+)
+
+# Segunda señal para el mismo caso: "arrastre" (método industrial) junto con
+# "artesanal" (la zona reservada para ese otro tipo de pesca) en el mismo
+# artículo -- no hace falta que estén pegados, ya que la nota suele nombrar la
+# zona en una oración distinta a la del método de pesca (ver caso "Mantaro").
+RE_ARRASTRE = re.compile(r"\barrastre\b", re.IGNORECASE)
+RE_ARTESANAL = re.compile(r"\bartesanal(?:es)?\b", re.IGNORECASE)
+
+
+def _millas_de_costa_detectadas(texto: str) -> float | None:
+    """Menor distancia a costa mencionada en el texto (en mn), o None si no
+    se menciona ninguna. Usa el número real en vez de un substring de
+    palabras clave -- así "175 millas de la costa" (ver test
+    test_rossana_l_no_confunde_175_millas_con_5_millas) no se confunde con
+    "5 millas..." por más que "5" aparezca dentro de "175"."""
+    distancias = [float(m.group(1).replace(",", ".")) for m in RE_MILLAS_DE_COSTA.finditer(texto)]
+    return min(distancias) if distancias else None
+
 # Matrícula de pesca (ej. "matrícula 37499-BM"): a diferencia del nombre, SÍ
 # es una identidad válida para crear la fila de embarcaciones (ver
 # chk_embarcacion_tiene_identidad en schema.sql) -- vale la pena extraerla
@@ -217,6 +248,12 @@ def _clasificar_tipo(texto: str, texto_low: str) -> str | None:
     if RE_SIN_AUTORIZACION.search(texto):
         return "Falta de Permiso"
 
+    distancia_costa = _millas_de_costa_detectadas(texto)
+    if distancia_costa is not None and distancia_costa <= RESERVA_ARTESANAL_NM:
+        return "Pesca en Zona Prohibida"
+    if RE_ARRASTRE.search(texto) and RE_ARTESANAL.search(texto):
+        return "Pesca en Zona Prohibida"
+
     mejor_tipo = None
     mejor_score = 0
     for tipo, palabras in TIPO_INFRACCION_PALABRAS.items():
@@ -235,6 +272,18 @@ def _extraer_embarcacion(texto: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+def _todos_los_nombres_de_embarcacion(texto: str) -> set[str]:
+    """A diferencia de _extraer_embarcacion (que devuelve solo la principal,
+    la de la infracción), junta TODOS los nombres de embarcación que
+    aparecen en el texto -- estas notas casi siempre nombran también a la
+    patrullera/nave de la Marina que hizo la intervención (p.ej. "Patrullera
+    Marítima 'Río Piura'"), y ese nombre le pega al mismo problema de NER que
+    el de la embarcación infractora (ver _extraer_ubicacion)."""
+    nombres = {m.group(1).strip() for m in RE_EMBARCACION_ENTRE_COMILLAS.finditer(texto)}
+    nombres |= {m.group(1).strip() for m in RE_EMBARCACION_PEGADA.finditer(texto)}
+    return {n for n in nombres if n}
+
+
 def _extraer_matricula(texto: str) -> str | None:
     m = RE_MATRICULA.search(texto)
     return m.group(1).strip().upper() if m else None
@@ -251,10 +300,25 @@ ORGANISMOS_NO_LUGAR = {
 }
 
 
-def _extraer_ubicacion(doc) -> str | None:
+def _extraer_ubicacion(doc, texto: str) -> str | None:
     # Solo LOC: MISC mezcla organizaciones/siglas (p.ej. "Produce") que no son
     # lugares, y diluían el conteo del lugar real más mencionado.
-    lugares = [ent.text for ent in doc.ents if ent.label_ == "LOC" and ent.text.lower() not in ORGANISMOS_NO_LUGAR]
+    #
+    # Caso real (andina.pe, embarcación "Mantaro", patrullera "Río Piura"):
+    # spaCy etiqueta nombres de embarcación como LOC por error (coinciden con
+    # nombres de ríos/lugares peruanos reales) y, como se repiten más veces
+    # que cualquier lugar real del artículo, ganaban por frecuencia y pisaban
+    # la ubicación verdadera ("Tumbes"/"Punta Malpelo"). Se descartan acá
+    # TODOS los nombres de embarcación detectados por regex (no solo el de
+    # la infractora: estas notas casi siempre nombran también a la
+    # patrullera que intervino).
+    nombres_embarcacion_low = {n.lower() for n in _todos_los_nombres_de_embarcacion(texto)}
+    lugares = [
+        ent.text for ent in doc.ents
+        if ent.label_ == "LOC"
+        and ent.text.lower() not in ORGANISMOS_NO_LUGAR
+        and ent.text.strip().lower() not in nombres_embarcacion_low
+    ]
     if not lugares:
         return None
     from collections import Counter
@@ -313,7 +377,7 @@ def extraer(titulo: str, texto: str) -> ExtraccionLocal:
         tipo_infraccion=_clasificar_tipo(texto, texto_low),
         embarcacion_detectada=embarcacion,
         matricula_detectada=matricula,
-        ubicacion_estimada=_extraer_ubicacion(doc),
+        ubicacion_estimada=_extraer_ubicacion(doc, texto),
         confianza=confianza,
         debug={"positivas": n_positivas, "entidades": [(e.text, e.label_) for e in doc.ents]},
     )

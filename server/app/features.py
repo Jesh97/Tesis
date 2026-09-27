@@ -25,8 +25,8 @@ from collections import defaultdict
 from datetime import datetime
 from statistics import mean, pstdev
 
-# Mismos puertos que scripts/detectar_irregularidades.py (con coordenadas
-# conocidas). El modelo espera 3 columnas de puerto adicionales para las que
+# Puertos pesqueros peruanos con coordenadas conocidas. El modelo espera 3
+# columnas de puerto adicionales para las que
 # no tenemos coordenadas ("LA PUNTA ANCHORAGE", "PER-55"): esos casos, y
 # cualquier puerto fuera de esta lista, se resuelven como "OTRO" -- el mismo
 # bucket que usa el propio dataset de entrenamiento para puertos no listados.
@@ -75,8 +75,26 @@ FEATURES_NO_DISPONIBLES = [
 
 RESERVA_ARTESANAL_NM = 5.0
 ZEE_NM = 200.0
-MIN_DIAS_PRESENCIA = 5  # igual que scripts/detectar_irregularidades.py
+MIN_DIAS_PRESENCIA = 5
 RADIO_CLUSTER_NM = 5.0
+
+# Umbral para marcar una visita a puerto (Events API, ver
+# gfw.consultar_ultimo_puerto_con_cache) como "zona no autorizada" --
+# calibrado con anclas reales de GFW, no adivinado: se relevaron las 25
+# anclas distintas que visitó una muestra de 97 embarcaciones reales y hay un
+# salto natural entre las que son sub-muelles/terminales de un puerto oficial
+# (0.5mn a 8.0mn -- MARQUEZ y LA PAMPILLA OIL TERMINAL, ambas parte del
+# complejo de Callao, son las más lejanas de ese grupo) y las que son un
+# desembarcadero real distinto (14.5mn en adelante -- TAMBO DE MORA, SUPE,
+# TIERRA COLORADA). 10mn cae justo en ese hueco.
+UMBRAL_ZONA_NO_AUTORIZADA_NM = 10.0
+
+# Margen para considerar que, ANTES del hueco de señal, la embarcación estaba
+# "cerca o fuera" del límite de las 200mn (flota de altura operando justo al
+# borde de la ZEE) -- no se exige que estuviera exactamente en aguas
+# internacionales porque el punto medio de un día con pocas celdas ya puede
+# subestimar cuánto se acercó al límite real.
+MARGEN_FRONTERA_ZEE_NM = 20.0
 
 
 def haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -96,7 +114,7 @@ def _distancia_costa_nm(lat: float, lon: float) -> float:
     return min(haversine_nm(lat, lon, plat, plon) for plon, plat in COSTA_PERU)
 
 
-def _puerto_mas_cercano(lat: float, lon: float) -> tuple[str, float]:
+def puerto_mas_cercano(lat: float, lon: float) -> tuple[str, float]:
     nombre, plat, plon = min(PUERTOS_PERU, key=lambda p: haversine_nm(lat, lon, p[1], p[2]))
     return nombre, haversine_nm(lat, lon, plat, plon)
 
@@ -202,7 +220,7 @@ def construir_features_flota(
         fishing_ratio_dia = (fishing_hours_dia / horas_dia) if horas_dia > 0 else 0.0
 
         dist_costa = _distancia_costa_nm(lat, lon)
-        puerto_nombre, dist_puerto = _puerto_mas_cercano(lat, lon)
+        puerto_nombre, dist_puerto = puerto_mas_cercano(lat, lon)
 
         if len(filas) >= 2:
             fecha_anterior = filas[-2]["date"]
@@ -213,10 +231,12 @@ def construir_features_flota(
             desplazamiento_km = haversine_km(lat_prev, lon_prev, lat, lon)
             horas_transcurridas = max(dias_desde_ultimo_registro * 24, 1)
             velocidad_implicita_kt = (desplazamiento_km / 1.852) / horas_transcurridas
+            dist_costa_anterior = _distancia_costa_nm(lat_prev, lon_prev)
         else:
             dias_desde_ultimo_registro = 0
             desplazamiento_km = 0.0
             velocidad_implicita_kt = 0.0
+            dist_costa_anterior = None
 
         disp_celdas_km = 0.0
         if n_celdas_dia > 1:
@@ -291,11 +311,25 @@ def construir_features_flota(
         racha_actual = 0
         for f in filas:
             flat, flon = _posicion_representativa(f["celdas"])
-            if _puerto_mas_cercano(flat, flon)[1] > 5.0:
+            if puerto_mas_cercano(flat, flon)[1] > 5.0:
                 racha_actual += 1
                 racha_lejos_de_puerto = max(racha_lejos_de_puerto, racha_actual)
             else:
                 racha_actual = 0
+
+        # Señal descriptiva (no se le pasa al modelo, igual que
+        # dias_lejos_de_puerto): compara la posición ANTES del hueco de señal
+        # contra la posición ACTUAL para detectar el patrón "estaba cerca o
+        # fuera del límite de las 200mn, se apagó, y reapareció dentro de la
+        # ZEE peruana" -- la flota de altura (china y de otras banderas)
+        # apagando el AIS justo al borde de la ZEE para entrar a pescar es un
+        # patrón documentado por GFW/Oceana, distinto de un apagón cualquiera
+        # dentro de aguas ya peruanas.
+        cruce_frontera_zee = (
+            dist_costa_anterior is not None
+            and dist_costa_anterior >= (ZEE_NM - MARGEN_FRONTERA_ZEE_NM)
+            and dist_costa <= ZEE_NM
+        )
 
         resultado[mmsi] = {
             "features": features,
@@ -305,6 +339,9 @@ def construir_features_flota(
             "lon": lon,
             "dias_sin_senal": dias_desde_ultimo_registro,
             "dias_lejos_de_puerto": racha_lejos_de_puerto,
+            "dist_costa_actual_nm": dist_costa,
+            "dist_costa_anterior_nm": dist_costa_anterior,
+            "cruce_frontera_zee_tras_hueco": cruce_frontera_zee,
         }
 
     return resultado

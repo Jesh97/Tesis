@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../../../lib/api'
-import type { Incident } from '../data/mockIncidents'
+import type { Incident } from '../types'
 
 export interface FiltrosIncidentes {
   desde?: string

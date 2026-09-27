@@ -37,6 +37,7 @@ CASOS_RELEVANTES = [
     ("sonapescal_tian_xiang", "Falta de Permiso", "Tian Xiang"),
     ("rossana_l", "Incursión en Zona Económica Exclusiva", "Rossana L"),
     ("hong_run_668", "Visita a Puerto no Autorizado", "Hong Run 668"),
+    ("mantaro_malpelo", "Pesca en Zona Prohibida", "Mantaro"),
 ]
 
 
@@ -60,6 +61,27 @@ def test_rossana_l_no_confunde_175_millas_con_5_millas():
     # número y no clasificarlo como "Pesca en Zona Prohibida" por error.
     resultado = _extraer("rossana_l")
     assert resultado.tipo_infraccion != "Pesca en Zona Prohibida"
+
+
+def test_mantaro_malpelo_detecta_zona_prohibida_por_distancia_numerica():
+    # Regresión: el artículo dice "pesca tipo arrastre a 3.5 millas de
+    # tierra... en aguas destinadas a la pesca artesanal", sin decir nunca
+    # "zona prohibida" ni "5 millas" -- antes del fix, tipo_infraccion salía
+    # None pese a que 3.5mn < 5mn es exactamente la infracción de la reserva
+    # artesanal (RESERVA_ARTESANAL_NM en extraccion_reglas.py y en
+    # server/app/features.py).
+    resultado = _extraer("mantaro_malpelo")
+    assert resultado.tipo_infraccion == "Pesca en Zona Prohibida"
+
+
+def test_mantaro_malpelo_no_confunde_nombre_de_embarcacion_con_ubicacion():
+    # Regresión: spaCy etiquetaba "Mantaro" (la embarcación infractora) y
+    # "Río Piura" (la patrullera que intervino) como LOC por error --
+    # ambos coinciden con nombres de ríos/lugares peruanos reales -- y como
+    # se repiten más veces que "Tumbes"/"Punta Malpelo", ganaban por
+    # frecuencia y pisaban la ubicación real del hecho.
+    resultado = _extraer("mantaro_malpelo")
+    assert resultado.ubicacion_estimada not in ("Mantaro", "Río Piura")
 
 
 # ---------------------------------------------------------------------------

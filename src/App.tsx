@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoginPage } from './features/auth/pages/LoginPage'
 import { IncidentsPage } from './features/incidents/pages/IncidentsPage'
 import { MonitoringPage } from './features/monitoring/pages/MonitoringPage'
@@ -14,15 +15,17 @@ function RequireAuth({ children }: { children: ReactElement }) {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<LoginPage />} />
-      <Route path="/monitoreo" element={<RequireAuth><MonitoringPage /></RequireAuth>} />
-      <Route path="/incidentes" element={<RequireAuth><IncidentsPage /></RequireAuth>} />
-      <Route path="/noticias" element={<RequireAuth><NewsPage /></RequireAuth>} />
-      <Route path="/reportes" element={<RequireAuth><ReportsPage /></RequireAuth>} />
-      <Route path="/zonas" element={<RequireAuth><ZonesPage /></RequireAuth>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/monitoreo" element={<RequireAuth><MonitoringPage /></RequireAuth>} />
+        <Route path="/incidentes" element={<RequireAuth><IncidentsPage /></RequireAuth>} />
+        <Route path="/noticias" element={<RequireAuth><NewsPage /></RequireAuth>} />
+        <Route path="/reportes" element={<RequireAuth><ReportsPage /></RequireAuth>} />
+        <Route path="/zonas" element={<RequireAuth><ZonesPage /></RequireAuth>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ErrorBoundary>
   )
 }
 

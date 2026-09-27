@@ -115,7 +115,7 @@ export function LoginForm() {
         <hr className="mt-8 border-slate-200" />
 
         <p className="mt-6 text-center text-xs text-slate-400">
-          © 2026 Gobierno del Perú.
+          © 2026 Gobierno Regional de Lambayeque.
           <br />
           Uso exclusivo para personal gubernamental autorizado.
         </p>

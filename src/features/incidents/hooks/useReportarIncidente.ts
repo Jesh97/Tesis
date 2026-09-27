@@ -13,6 +13,9 @@ export interface DatosReporteManual {
   lon?: number
   bandera?: string
   vesselType?: string
+  // Solo cuando el reporte viene de una alerta del mapa (esa zona crítica
+  // ya se conoce) -- un reporte manual no trae ninguna.
+  zonaId?: string
 }
 
 /** "Reportar incidencia" (sidebar): registra un incidente manual, elegido a

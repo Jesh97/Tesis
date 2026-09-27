@@ -1,10 +1,12 @@
-import type { ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CircleMarker, MapContainer, Marker, Polygon, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Polygon, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import * as turf from '@turf/turf'
 import { FilterIcon, LayersIcon, MinusIcon, PlusIcon } from '../../../components/icons'
+import { apiFetch } from '../../../lib/api'
 import { LAMBAYEQUE_COASTLINE } from '../data/lambayequeCoastline'
+import { PUERTOS_OFICIALES } from '../data/puertosOficiales'
 import type { LambayequeVessel } from '../hooks/useLambayequeVessels'
 
 // Costa y espejo de mar a cargo de la Dirección Regional de Producción de
@@ -35,10 +37,11 @@ function toLonLat([lat, lon]: [number, number]): [number, number] {
   return [lon, lat]
 }
 
+const coastlineLine = turf.lineString(LAMBAYEQUE_COASTLINE.map(toLonLat))
+
 function fiveMileZonePositions(): [number, number][][] {
-  const coastline = turf.lineString(LAMBAYEQUE_COASTLINE.map(toLonLat))
   const jurisdictionPolygon = turf.polygon([[...jurisdiction, jurisdiction[0]].map(toLonLat)])
-  const buffered = turf.buffer(coastline, 5, { units: 'nauticalmiles' })
+  const buffered = turf.buffer(coastlineLine, 5, { units: 'nauticalmiles' })
   const clipped = buffered && turf.intersect(turf.featureCollection([buffered, jurisdictionPolygon]))
   if (!clipped) return []
 
@@ -48,11 +51,49 @@ function fiveMileZonePositions(): [number, number][][] {
 
 const fiveMileZone = fiveMileZonePositions()
 
+// Límite de la Zona Económica Exclusiva peruana (200mn desde la costa). El
+// margen es el mismo que MARGEN_FRONTERA_ZEE_NM en server/app/features.py:
+// un barco "cerca de la frontera ZEE" es el que, apagando el AIS justo ahí,
+// podría cruzar hacia aguas peruanas sin que se note un salto de posición
+// grande -- ver server/app/gfw.py:consultar_actividad_con_cache.
+const ZEE_NM = 200
+const MARGEN_FRONTERA_ZEE_NM = 20
+
+function distanciaCostaNm(lat: number, lon: number): number {
+  return turf.pointToLineDistance(turf.point([lon, lat]), coastlineLine, { units: 'nauticalmiles' })
+}
+
+// Mismo mapeo que _mapear_tipo en server/app/routes/embarcaciones.py, pero
+// mostrando el vesselType crudo de GFW cuando no es "FISHING" en vez de
+// colapsarlo todo a "otro" -- acá sí vale la pena mostrar el detalle real.
+function etiquetaTipo(vesselType: string | null): string {
+  if (!vesselType) return 'Tipo desconocido'
+  if (vesselType.toUpperCase() === 'FISHING') return 'Pesca industrial'
+  return vesselType
+}
+
 const placeLabelIcon = L.divIcon({
   className: '',
   html: `<span style="font-size:13px;font-weight:500;color:#64748b;text-shadow:0 1px 2px rgba(255,255,255,.8);white-space:nowrap;">${portLabel.label}</span>`,
   iconSize: [100, 16],
   iconAnchor: [-6, 8],
+})
+
+// Mismo trazo que AnchorIcon (components/icons) -- L.divIcon necesita el SVG
+// como string, no como componente React.
+const puertoOficialIcon = L.divIcon({
+  className: '',
+  html: `
+    <div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:9999px;background:#1e3a5f;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.4);">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="5" r="2" />
+        <path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3" />
+        <path d="M8 9h8" />
+      </svg>
+    </div>
+  `,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
 })
 
 interface MapControlButtonProps {
@@ -94,6 +135,131 @@ function ZoomControls() {
   )
 }
 
+interface UltimoPuerto {
+  puerto: string | null
+  diasDesdeSalida?: number
+  duracionHorasEnPuerto?: number
+  // true si el ancla real (Events API) quedó a más de
+  // features.UMBRAL_ZONA_NO_AUTORIZADA_NM del puerto oficial más cercano --
+  // ver el comentario ahí sobre cómo se calibró ese umbral con datos reales.
+  zonaNoAutorizada?: boolean
+  puertoOficialMasCercano?: string | null
+  distPuertoOficialNm?: number | null
+}
+
+// "cargando"/"error" son estados de la consulta; UltimoPuerto|null es el
+// resultado ya resuelto (null = todavía no se pidió).
+type EstadoUltimoPuerto = UltimoPuerto | 'cargando' | 'error' | null
+
+function formatearDiasDesdeSalida(dias: number): string {
+  if (dias <= 0) return 'hoy'
+  if (dias === 1) return 'ayer'
+  return `hace ${dias} días`
+}
+
+interface VesselMarkerProps {
+  vessel: LambayequeVessel & { distCostaNm: number }
+  conIncidente: boolean
+  cercaFronteraZee: boolean
+}
+
+/** Componente aparte (no inline en el .map de MapView) porque necesita su
+ * propio estado de React para la consulta bajo demanda del último puerto --
+ * no tendría sentido pedirla para los ~1000+ barcos de la flota de una, así
+ * que se dispara recién al hacer click en ESTE marcador puntual. */
+function VesselMarker({ vessel, conIncidente, cercaFronteraZee }: VesselMarkerProps) {
+  const [ultimoPuerto, setUltimoPuerto] = useState<EstadoUltimoPuerto>(null)
+
+  async function cargarUltimoPuerto() {
+    if (!vessel.vesselId || ultimoPuerto) return // sin vesselId no hay nada que pedir, o ya se pidió
+    setUltimoPuerto('cargando')
+    try {
+      const response = await apiFetch(`/api/embarcaciones/gfw/ultimo-puerto?vesselId=${encodeURIComponent(vessel.vesselId)}`)
+      if (!response.ok) throw new Error()
+      const data = (await response.json()) as UltimoPuerto
+      setUltimoPuerto(data)
+    } catch {
+      setUltimoPuerto('error')
+    }
+  }
+
+  const color = conIncidente ? '#dc2626' : cercaFronteraZee ? '#7c3aed' : '#0f766e'
+
+  return (
+    <CircleMarker
+      center={[vessel.lat, vessel.lon]}
+      radius={conIncidente || cercaFronteraZee ? 4 : 3}
+      pathOptions={{ color, fillColor: color, fillOpacity: 0.85, weight: 1 }}
+      eventHandlers={{ click: cargarUltimoPuerto }}
+    >
+      {/* Hover: vistazo rápido. Click: descripción completa (Popup abajo). */}
+      <Tooltip direction="top" offset={[0, -4]}>
+        <strong>{vessel.nombre}</strong>
+        {vessel.flag ? ` · ${vessel.flag}` : ''}
+      </Tooltip>
+
+      <Popup minWidth={220}>
+        <div className="text-xs">
+          <p className="text-sm font-bold text-slate-900">{vessel.nombre}</p>
+
+          {(conIncidente || cercaFronteraZee) && (
+            <p className="mt-1">
+              {conIncidente && (
+                <span className="mr-1 inline-block rounded bg-red-100 px-1.5 py-0.5 font-semibold text-red-700">
+                  Con incidente confirmado
+                </span>
+              )}
+              {cercaFronteraZee && (
+                <span className="inline-block rounded bg-violet-100 px-1.5 py-0.5 font-semibold text-violet-700">
+                  Cerca del límite ZEE
+                </span>
+              )}
+            </p>
+          )}
+
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-slate-600">
+            <dt className="font-medium text-slate-400">MMSI</dt>
+            <dd>{vessel.mmsi ?? 'No disponible'}</dd>
+            <dt className="font-medium text-slate-400">Bandera</dt>
+            <dd>{vessel.flag ?? 'Desconocida'}</dd>
+            <dt className="font-medium text-slate-400">Tipo</dt>
+            <dd>{etiquetaTipo(vessel.vesselType)}</dd>
+            <dt className="font-medium text-slate-400">Pesca aparente</dt>
+            <dd>{vessel.horas.toFixed(1)} h</dd>
+            <dt className="font-medium text-slate-400">Dist. a costa</dt>
+            <dd>{vessel.distCostaNm.toFixed(0)} mn</dd>
+            <dt className="font-medium text-slate-400">Posición</dt>
+            <dd>
+              {vessel.lat.toFixed(3)}, {vessel.lon.toFixed(3)}
+            </dd>
+            <dt className="font-medium text-slate-400">Último puerto</dt>
+            <dd>
+              {!vessel.vesselId && 'No disponible'}
+              {vessel.vesselId && ultimoPuerto === null && 'Toca para consultar'}
+              {ultimoPuerto === 'cargando' && 'Consultando GFW…'}
+              {ultimoPuerto === 'error' && 'No se pudo consultar'}
+              {ultimoPuerto && typeof ultimoPuerto === 'object' && ultimoPuerto.puerto === null && 'Sin visitas registradas'}
+              {ultimoPuerto && typeof ultimoPuerto === 'object' && ultimoPuerto.puerto !== null && (
+                <>
+                  {ultimoPuerto.puerto}
+                  {ultimoPuerto.diasDesdeSalida != null && ` · ${formatearDiasDesdeSalida(ultimoPuerto.diasDesdeSalida)}`}
+                </>
+              )}
+            </dd>
+          </dl>
+
+          {ultimoPuerto && typeof ultimoPuerto === 'object' && ultimoPuerto.zonaNoAutorizada && (
+            <p className="mt-2 rounded bg-amber-100 px-1.5 py-1 font-semibold text-amber-800">
+              Zona no autorizada: a {ultimoPuerto.distPuertoOficialNm}mn del puerto oficial más cercano
+              {ultimoPuerto.puertoOficialMasCercano ? ` (${ultimoPuerto.puertoOficialMasCercano})` : ''}
+            </p>
+          )}
+        </div>
+      </Popup>
+    </CircleMarker>
+  )
+}
+
 interface ZonaCritica {
   id: string
   nombre: string
@@ -123,6 +289,14 @@ function poligonoAPosiciones(poligono: ZonaCritica['poligono']): [number, number
 }
 
 export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], alertaPosicion, children }: MapViewProps) {
+  // Se calcula una sola vez por cambio de "vessels" (no en cada render): con
+  // muchos barcos, turf.pointToLineDistance por marcador en cada render sí
+  // se nota.
+  const vesselsConDistancia = useMemo(
+    () => vessels.map((vessel) => ({ ...vessel, distCostaNm: distanciaCostaNm(vessel.lat, vessel.lon) })),
+    [vessels],
+  )
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       <MapContainer
@@ -170,29 +344,16 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
 
         {/* CircleMarker (canvas) en vez de Marker/divIcon: con miles de barcos
             a escala nacional, un elemento DOM por punto vuelve el mapa lento. */}
-        {vessels.map((vessel, index) => {
+        {vesselsConDistancia.map((vessel, index) => {
           const conIncidente = Boolean(vessel.mmsi && mmsiConIncidente?.has(vessel.mmsi))
-          const color = conIncidente ? '#dc2626' : '#0f766e'
+          const cercaFronteraZee = !conIncidente && Math.abs(vessel.distCostaNm - ZEE_NM) <= MARGEN_FRONTERA_ZEE_NM
           return (
-            <CircleMarker
+            <VesselMarker
               key={`${vessel.embarcacionId ?? vessel.mmsi ?? 'v'}-${index}`}
-              center={[vessel.lat, vessel.lon]}
-              radius={conIncidente ? 4 : 3}
-              pathOptions={{ color, fillColor: color, fillOpacity: 0.85, weight: 1 }}
-            >
-              <Tooltip direction="top" offset={[0, -4]}>
-                <strong>{vessel.nombre}</strong>
-                {vessel.mmsi ? ` · MMSI ${vessel.mmsi}` : ''}
-                <br />
-                {vessel.horas.toFixed(1)} h de pesca aparente
-                {conIncidente && (
-                  <>
-                    <br />
-                    <span style={{ color: '#dc2626', fontWeight: 600 }}>Con incidente confirmado</span>
-                  </>
-                )}
-              </Tooltip>
-            </CircleMarker>
+              vessel={vessel}
+              conIncidente={conIncidente}
+              cercaFronteraZee={cercaFronteraZee}
+            />
           )
         })}
 
@@ -224,6 +385,20 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
 
         <Marker position={portLabel.position} icon={placeLabelIcon} />
 
+        {/* Puertos oficiales de desembarco (mismos 13 que PUERTOS_PERU en
+            server/app/features.py, usados ahí para dist_puerto_mas_cercano_nm) --
+            referencia fija en el mapa, no depende de "vessels" ni de ninguna
+            consulta a GFW. */}
+        {PUERTOS_OFICIALES.map((puerto) => (
+          <Marker key={puerto.nombre} position={[puerto.lat, puerto.lon]} icon={puertoOficialIcon}>
+            <Tooltip direction="top" offset={[0, -12]}>
+              <strong>{puerto.nombre}</strong>
+              <br />
+              Puerto oficial de desembarco
+            </Tooltip>
+          </Marker>
+        ))}
+
         <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
           <ZoomControls />
           <MapControlButton label="Capas">
@@ -232,6 +407,25 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
           <MapControlButton label="Filtros">
             <FilterIcon className="h-4 w-4" />
           </MapControlButton>
+        </div>
+
+        <div className="absolute bottom-4 left-4 z-[1000] rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#0f766e]" />
+            Embarcación
+          </div>
+          <div className="mt-1 flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#7c3aed]" />
+            Cerca del límite de las 200mn (ZEE)
+          </div>
+          <div className="mt-1 flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#dc2626]" />
+            Con incidente confirmado
+          </div>
+          <div className="mt-1 flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#1e3a5f]" />
+            Puerto oficial de desembarco
+          </div>
         </div>
       </MapContainer>
 

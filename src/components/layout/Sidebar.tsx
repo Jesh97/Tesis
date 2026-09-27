@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import escudoLambayeque from '../../assets/escudo-lambayeque.png'
 import { ReportarIncidenteModal } from '../../features/incidents/components/ReportarIncidenteModal'
 import { cerrarSesion } from '../../lib/session'
 import {
   AlertTriangleIcon,
-  AnchorIcon,
   FileTextIcon,
   HelpCircleIcon,
   LayoutGridIcon,
@@ -38,13 +38,13 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-        <AnchorIcon className="h-5 w-5 text-red-700" />
+      <div className="flex items-center gap-2.5 border-b border-slate-200 px-5 py-4">
+        <img src={escudoLambayeque} alt="Escudo del Gobierno Regional de Lambayeque" className="h-9 w-auto shrink-0" />
         <div className="leading-tight">
           <p className="text-xs font-semibold tracking-wide text-red-700 uppercase">
-            Ministerio de Producción
+            Gobierno Regional de
           </p>
-          <p className="text-xs text-slate-500">Dirección de Supervisión</p>
+          <p className="text-sm font-bold tracking-wide text-red-700 uppercase">Lambayeque</p>
         </div>
       </div>
 

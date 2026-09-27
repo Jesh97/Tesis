@@ -3,8 +3,8 @@ import { apiFetch } from '../../../lib/api'
 
 export interface ResumenReportes {
   total_incidentes: number
-  embarcaciones_capturadas: number
-  alertas_procesadas: number
+  incidentes_confirmados: number
+  incidentes_pendientes: number
   zonas_criticas: number
 }
 

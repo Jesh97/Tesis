@@ -1,5 +1,5 @@
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { AlertTriangleIcon, BellIcon, CompassIcon, DownloadIcon, ShipIcon } from '../../../components/icons'
+import { AlertTriangleIcon, CompassIcon, DownloadIcon, ShieldCheckIcon } from '../../../components/icons'
 import { descargarCSV } from '../../../lib/csv'
 import { IncidentsTrendChart } from '../components/IncidentsTrendChart'
 import { InfractionsBreakdown } from '../components/InfractionsBreakdown'
@@ -7,22 +7,33 @@ import { StatCard } from '../components/StatCard'
 import { TopZones } from '../components/TopZones'
 import { useReportes } from '../hooks/useReportes'
 
+// Los 4 números salen de columnas que sí cambian con el uso real de la app
+// (incidentes.estado vía sp_incidentes_confirmar/descartar, zonas.es_critica
+// vía ZonesPage) -- antes había "Embarc. Capturadas" y "Alertas Procesadas",
+// pero ninguna de esas dos tenía ningún control en la UI que las hiciera
+// moverse de 0 (ver el comentario en vw_reportes_resumen, db/schema.sql).
 const statIcons = [
+  { icon: <AlertTriangleIcon className="h-4 w-4 text-slate-600" />, className: 'bg-slate-100' },
+  { icon: <ShieldCheckIcon className="h-4 w-4 text-emerald-600" />, className: 'bg-emerald-100' },
   { icon: <AlertTriangleIcon className="h-4 w-4 text-amber-600" />, className: 'bg-amber-100' },
-  { icon: <ShipIcon className="h-4 w-4 text-sky-600" />, className: 'bg-sky-100' },
-  { icon: <BellIcon className="h-4 w-4 text-violet-600" />, className: 'bg-violet-100' },
-  { icon: <CompassIcon className="h-4 w-4 text-slate-600" />, className: 'bg-slate-100' },
+  { icon: <CompassIcon className="h-4 w-4 text-sky-600" />, className: 'bg-sky-100' },
 ]
 
 export function ReportsPage() {
   const { resumen, incidentesPorMes, tiposInfraccion, zonasTop, loading, error } = useReportes()
 
+  // "?? 0" en cada campo: si el backend todavía responde con las columnas
+  // viejas (embarcaciones_capturadas/alertas_procesadas, de antes de migrar
+  // db/schema.sql+procedures.sql), los campos nuevos vendrían "undefined" y
+  // ".toLocaleString()" tiraba abajo la página ENTERA en blanco, sin ningún
+  // mensaje -- un desfase temporal entre front y back no debería nunca
+  // verse así.
   const statSummaries = resumen
     ? [
-        { label: 'Total Incidentes', value: resumen.total_incidentes.toLocaleString('es-PE') },
-        { label: 'Embarc. Capturadas', value: resumen.embarcaciones_capturadas.toLocaleString('es-PE') },
-        { label: 'Alertas Procesadas', value: resumen.alertas_procesadas.toLocaleString('es-PE') },
-        { label: 'Zonas Críticas', value: resumen.zonas_criticas.toLocaleString('es-PE') },
+        { label: 'Total Incidentes', value: (resumen.total_incidentes ?? 0).toLocaleString('es-PE') },
+        { label: 'Incidentes Confirmados', value: (resumen.incidentes_confirmados ?? 0).toLocaleString('es-PE') },
+        { label: 'Incidentes Pendientes', value: (resumen.incidentes_pendientes ?? 0).toLocaleString('es-PE') },
+        { label: 'Zonas Críticas', value: (resumen.zonas_criticas ?? 0).toLocaleString('es-PE') },
       ]
     : []
 

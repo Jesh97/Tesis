@@ -1,4 +1,5 @@
-import { AnchorIcon, ShieldCheckIcon } from '../../../components/icons'
+import escudoLambayeque from '../../../assets/escudo-lambayeque.png'
+import { ShieldCheckIcon } from '../../../components/icons'
 
 export function LoginBranding() {
   return (
@@ -9,11 +10,11 @@ export function LoginBranding() {
       />
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-900/70 to-slate-950/90" />
 
-      <div className="relative z-10 flex items-center gap-2 text-sm tracking-wide">
-        <AnchorIcon className="h-5 w-5" />
+      <div className="relative z-10 flex items-center gap-2.5 text-sm tracking-wide">
+        <img src={escudoLambayeque} alt="Escudo del Gobierno Regional de Lambayeque" className="h-8 w-auto shrink-0" />
         <div className="leading-tight">
-          <p className="font-semibold uppercase">Ministerio de la Producción</p>
-          <p className="text-slate-300">Gobierno del Perú</p>
+          <p className="font-semibold uppercase">Gobierno Regional de</p>
+          <p className="text-slate-300 uppercase">Lambayeque</p>
         </div>
       </div>
 

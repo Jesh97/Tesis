@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Badge } from '../../../components/ui/Badge'
 import { BanIcon, EyeIcon, ShieldCheckIcon, ShipIcon } from '../../../components/icons'
-import type { Incident, IncidentSeverity } from '../data/mockIncidents'
+import type { Incident, IncidentSeverity } from '../types'
 import { IncidentDetailModal } from './IncidentDetailModal'
 
 const severityConfig: Record<IncidentSeverity, { label: string; variant: 'red' | 'amber' | 'gray' }> = {

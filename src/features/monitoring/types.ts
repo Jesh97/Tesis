@@ -1,1 +1,1 @@
-export type TipoAlerta = 'zona_protegida' | 'apagon_ais' | 'demora_puerto'
+export type TipoAlerta = 'zona_protegida' | 'apagon_ais' | 'demora_puerto' | 'cruce_frontera_zee'
