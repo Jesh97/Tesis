@@ -4,12 +4,17 @@ import { Button } from '../../../components/ui/Button'
 import { Checkbox } from '../../../components/ui/Checkbox'
 import { TextField } from '../../../components/ui/TextField'
 import { MapPinIcon, PlusIcon, XIcon } from '../../../components/icons'
+import { obtenerSesion } from '../../../lib/session'
 import { useZonas, type Coordenada } from '../hooks/useZonas'
 
 const FILA_VACIA = { lat: '', lon: '' }
 
 export function ZonesPage() {
   const { zonas, loading, error, crearZona, eliminarZona } = useZonas()
+  // Crear/eliminar zonas exige rol "administrador" en el backend (cambia qué
+  // vigila todo el sistema) -- se oculta acá para no dejar que un analista
+  // llene el formulario y recién se entere del 403 al enviarlo.
+  const esAdministrador = obtenerSesion()?.rol === 'administrador'
 
   const [nombre, setNombre] = useState('')
   const [region, setRegion] = useState('')
@@ -68,6 +73,7 @@ export function ZonesPage() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
+          {esAdministrador ? (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-slate-900">Nueva zona</h2>
 
@@ -153,6 +159,15 @@ export function ZonesPage() {
               {guardando ? 'Guardando…' : 'Crear zona'}
             </Button>
           </form>
+          ) : (
+            <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-900">Nueva zona</h2>
+              <p className="text-sm text-slate-500">
+                Crear o eliminar zonas está reservado a un administrador. Contacta a tu administrador si
+                necesitas dar de alta una nueva zona.
+              </p>
+            </div>
+          )}
 
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-slate-900">Zonas registradas</h2>
@@ -182,13 +197,15 @@ export function ZonesPage() {
                       {zona.region} · {zona.poligono?.coordinates[0]?.length ?? 0} puntos
                     </p>
                   </div>
-                  <button
-                    onClick={() => void eliminarZona(zona.id)}
-                    aria-label="Eliminar zona"
-                    className="text-slate-400 hover:text-red-600"
-                  >
-                    <XIcon className="h-4 w-4" />
-                  </button>
+                  {esAdministrador && (
+                    <button
+                      onClick={() => void eliminarZona(zona.id)}
+                      aria-label="Eliminar zona"
+                      className="text-slate-400 hover:text-red-600"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

@@ -14,6 +14,12 @@ load_dotenv(ENV_FILE)
 API_URL = "https://gateway.api.globalfishingwatch.org/v3/4wings/report"
 DATASET = "public-global-fishing-effort:latest"
 
+# server/app/gfw.py importa este módulo en el mismo proceso del servidor (no
+# como subproceso), así que esta sesión vive mientras el servidor esté
+# corriendo y reutiliza la conexión TCP/TLS entre consultas en vez de abrir
+# una nueva en cada llamada.
+_session = requests.Session()
+
 # Cobertura por defecto cuando no se pasa --geojson: la jurisdicción marítima
 # de la región Lambayeque completa (no solo el puerto de Pimentel puntual, ni
 # todo el Perú) -- objetivo general de la tesis. Cubre la costa de Lambayeque
@@ -66,7 +72,7 @@ def obtener_barcos_en_zona(token: str, desde: str, hasta: str, geojson: dict) ->
         "Content-Type": "application/json",
     }
 
-    resp = requests.post(API_URL, headers=headers, params=params, json=body, timeout=60)
+    resp = _session.post(API_URL, headers=headers, params=params, json=body, timeout=60)
     resp.raise_for_status()
     data = resp.json()
 

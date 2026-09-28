@@ -4,14 +4,16 @@ import subprocess
 import threading
 from pathlib import Path
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from starlette import status
 
+from ..auth_dep import usuario_actual
 from ..db import ejecutar_sp, get_cursor
 
 router = APIRouter()
 
 URL_LIMIT = 10  # mismo límite que muestra WebAnalyzerCard en el frontend
+ANALYZE_TIMEOUT_SEGUNDOS = 10 * 60  # fetch + readability + Claude por hasta 10 URLs
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent  # raíz del repo
 ANALYZE_SCRIPT = BASE_DIR / "scripts" / "analyze_news.py"
@@ -32,7 +34,12 @@ def _run_analyze_news_script(fuentes: list[dict]) -> None:
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            out, err = proc.communicate(input=json.dumps(fuentes))
+            try:
+                out, err = proc.communicate(input=json.dumps(fuentes), timeout=ANALYZE_TIMEOUT_SEGUNDOS)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                out, err = proc.communicate()
+                print(f"[analyze_news] proceso cancelado por exceder {ANALYZE_TIMEOUT_SEGUNDOS}s")
             if out.strip():
                 print(f"[analyze_news] {out.strip()}")
             if err.strip():
@@ -44,7 +51,7 @@ def _run_analyze_news_script(fuentes: list[dict]) -> None:
 
 
 @router.post("/analizar", status_code=status.HTTP_202_ACCEPTED)
-def analizar(body: dict = Body(...)):
+def analizar(body: dict = Body(...), usuario: dict = Depends(usuario_actual)):
     urls = body.get("urls")
     if not isinstance(urls, list) or len(urls) == 0:
         raise HTTPException(status_code=400, detail={"error": 'Se requiere un arreglo "urls" con al menos un elemento'})
@@ -74,7 +81,7 @@ def analizar(body: dict = Body(...)):
             except Exception:
                 continue  # URL inválida: se ignora silenciosamente
 
-            ejecutar_sp(cur, "SELECT * FROM sp_fuentes_crear(%s, %s)", (raw_url, dominio))
+            ejecutar_sp(cur, "SELECT * FROM sp_fuentes_crear(%s, %s, %s)", (raw_url, dominio, usuario["sub"]))
             fila = cur.fetchone()
             if fila["debe_analizar"]:
                 creados.append({"id": fila["id"], "url": raw_url})

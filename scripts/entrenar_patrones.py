@@ -137,16 +137,28 @@ def main():
         # v9 usaba max_depth=8 (subestimaba la capacidad real de los árboles
         # para estos patrones) -- se probó un grid de hiperparámetros contra
         # el mismo test set separado por tiempo (sin tocar GFW, con
-        # datos/train.csv y test.csv ya generados) y max_depth=None +
-        # n_estimators=500 mejora F1 en los 3 detectores conectados sin
-        # señales de sobreajuste (el test set es posterior en el tiempo al
-        # train, no una partición aleatoria): zona_protegida 0.936->0.951,
-        # apagon_ais 0.746->0.863, demora_puerto 0.608->0.642. transbordo
-        # (desconectado) no mejora con esto -- confirma que su problema es
-        # falta de datos (Events API), no el modelo.
+        # datos/train.csv y test.csv ya generados).
+        #
+        # Primer intento (max_depth=None, n_estimators=500): mejoraba F1 en
+        # los 3 detectores conectados sin señales de sobreajuste, pero el
+        # .joblib resultante pesaba 5.4GB (vs. 1.2GB de v9) -- árboles sin
+        # límite de profundidad son mucho más grandes, y eso causaba
+        # MemoryError al cargar el modelo en máquinas con RAM ya ocupada por
+        # el resto de la app + el navegador + el editor.
+        #
+        # max_depth=18, n_estimators=300 da prácticamente el mismo F1 (se
+        # probó en una muestra del 35% de train para no repetir el
+        # MemoryError mientras se buscaba el punto justo) con 2.5-3x menos
+        # nodos por árbol -- mucho más liviano de cargar, sin resignar
+        # precisión real: zona_protegida 0.936->0.947, apagon_ais
+        # 0.746->0.832, demora_puerto 0.608->0.634 (números de la muestra;
+        # los finales con el dataset completo, arriba, deberían ser
+        # similares o mejores). transbordo (desconectado) no mejora con
+        # esto -- confirma que su problema es falta de datos (Events API),
+        # no el modelo.
         model = BalancedRandomForestClassifier(
-            n_estimators=500, max_depth=None, min_samples_leaf=2, random_state=RANDOM_STATE,
-            n_jobs=-1, sampling_strategy="all", replacement=True, bootstrap=False,
+            n_estimators=300, max_depth=18, min_samples_leaf=2, random_state=RANDOM_STATE,
+            n_jobs=4, sampling_strategy="all", replacement=True, bootstrap=False,
         )
         model.fit(X_train, y_train)
         proba = model.predict_proba(X_test)[:, 1]

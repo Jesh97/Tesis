@@ -2,11 +2,12 @@ import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import escudoLambayeque from '../../assets/escudo-lambayeque.png'
 import { ReportarIncidenteModal } from '../../features/incidents/components/ReportarIncidenteModal'
-import { cerrarSesion } from '../../lib/session'
+import { cerrarSesion, obtenerSesion } from '../../lib/session'
 import {
   AlertTriangleIcon,
   FileTextIcon,
   HelpCircleIcon,
+  HistoryIcon,
   LayoutGridIcon,
   LogOutIcon,
   MapPinIcon,
@@ -27,9 +28,15 @@ const navItems: NavItem[] = [
   { label: 'Reportes', to: '/reportes', icon: <FileTextIcon className="h-4 w-4" /> },
 ]
 
+// GET /api/auditoria exige rol "administrador" (server/app/routes/auditoria.py)
+// -- no tiene sentido mostrar el link a quien de todas formas va a recibir un 403.
+const ITEM_AUDITORIA: NavItem = { label: 'Auditoría', to: '/auditoria', icon: <HistoryIcon className="h-4 w-4" /> }
+
 export function Sidebar() {
   const navigate = useNavigate()
   const [mostrarReportar, setMostrarReportar] = useState(false)
+  const esAdministrador = obtenerSesion()?.rol === 'administrador'
+  const items = esAdministrador ? [...navItems, ITEM_AUDITORIA] : navItems
 
   function handleLogout() {
     cerrarSesion()
@@ -49,7 +56,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-col gap-1 p-3">
-        {navItems.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

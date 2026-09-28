@@ -7,6 +7,7 @@ pydantic
 pyjwt
 requests
 pytest
+httpx  # requerido por fastapi.testclient.TestClient (server/tests/test_main.py)
 joblib
 scikit-learn
 imbalanced-learn

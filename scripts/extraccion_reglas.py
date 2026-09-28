@@ -31,6 +31,17 @@ import spacy
 
 _NLP = None
 
+# Antes se pasaba texto[:5000] a spaCy: en notas largas (crónicas, informes
+# con varias secciones), la ubicación real puede mencionarse recién después
+# de ese punto y el NER simplemente no la veía. La relevancia/tipo de
+# infracción ya se calculan sobre el texto completo (_clasificar_relevancia,
+# _clasificar_tipo) -- este límite solo existía para el NER de ubicación y no
+# tenía ninguna razón de negocio, así que se sube a un techo generoso que
+# cubre cualquier artículo real (con margen: MAX_CHARS en analyze_news.py, el
+# límite análogo para el prompt de Claude, es 12000) y solo actúa como tope
+# de seguridad ante una página scrapeada de forma anómala.
+MAX_CHARS_NER = 20000
+
 
 def _nlp():
     global _NLP
@@ -166,6 +177,22 @@ RE_SIN_AUTORIZACION = re.compile(
     re.IGNORECASE,
 )
 
+# "Capitanía de Puerto de <lugar>" es la forma casi universal en que estas
+# notas (Marina de Guerra, gob.pe) introducen la ubicación -- caso real
+# (gob.pe, embarcación "Valentino y Kerim"): spaCy capturó TODO junto como
+# una sola entidad LOC ("Capitanía de Puerto de San Juan de Marcona"), así
+# que filtrarla por contener "capitanía" (ver ORGANISMOS_NO_LUGAR) tiraba el
+# lugar real con la institución. Se prueba ANTES que el filtrado genérico por
+# NER: si matchea, el lugar sale de acá directo, no de las entidades LOC.
+# "de Puerto" es obligatorio, no opcional: se probó con "(de Puerto)?"
+# opcional y se rompió con el caso "Mantaro" ("La Capitanía de Puerto puso a
+# disposición..." -- sin lugar después), donde capturaba "Puerto" como si
+# fuera el lugar. Exigir la frase completa "capitanía de puerto de" hace que
+# no matchee ahí (cae al filtrado por NER, que sí da el lugar correcto).
+RE_CAPITANIA_DE = re.compile(
+    r"(?i:capitan[ií]a\s+de\s+puerto\s+de\s+)([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]*(?:\s+(?:de\s+)?[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]*){0,3})",
+)
+
 # Igual que RESERVA_ARTESANAL_NM en server/app/features.py: las 5mn desde
 # costa reservadas en exclusiva para pesca artesanal (D.L. 25977, art. 9).
 # Muchas notas de "pesca de arrastre" reportan la distancia exacta a la costa
@@ -291,16 +318,32 @@ def _extraer_matricula(texto: str) -> str | None:
 
 # Siglas/organismos del sector que el modelo NER etiqueta como LOC por error
 # (nombres propios en mayúscula, mismo patrón superficial que un lugar).
+# Palabras clave (no frases exactas): se buscan como substring dentro del
+# texto de la entidad, no como igualdad. Caso real (gob.pe, embarcación
+# ecuatoriana "Regalito de Dios 3.E.I.G."): spaCy partió "La Capitanía de
+# Puerto de Zorritos" en DOS entidades LOC separadas ("La Capitanía" y
+# "Puerto de Zorritos") -- con igualdad exacta ni "capitanía" estaba en la
+# lista, ni frases parciales como "Fiscalía Provincial Especializada" (en vez
+# de "Fiscalía Especializada") calzaban contra la lista. Con substring, una
+# sola palabra clave cubre todas las formas en que spaCy corta el nombre
+# completo de la institución.
 ORGANISMOS_NO_LUGAR = {
     "produce", "calamasur", "sernanp", "imarpe", "fondepes", "osinergmin",
     "dicapi", "oefa", "sanipes", "congreso", "snp", "uit",
     "sociedad nacional de pesquería", "ministerio de la producción",
-    "ministerio público", "fiscalía", "fiscalía especializada",
-    "policía nacional", "pnp", "poder judicial", "estado", "estado peruano",
+    "ministerio público", "fiscalía", "policía nacional", "pnp",
+    "poder judicial", "estado peruano", "capitanía", "marina de guerra",
+    "dirección de producción", "gobierno regional", "autoridad marítima",
 }
 
 
 def _extraer_ubicacion(doc, texto: str) -> str | None:
+    # Se prueba primero (ver RE_CAPITANIA_DE): más confiable que el NER
+    # genérico para el patrón casi universal de estas notas.
+    m = RE_CAPITANIA_DE.search(texto)
+    if m:
+        return m.group(1).strip()
+
     # Solo LOC: MISC mezcla organizaciones/siglas (p.ej. "Produce") que no son
     # lugares, y diluían el conteo del lugar real más mencionado.
     #
@@ -311,13 +354,17 @@ def _extraer_ubicacion(doc, texto: str) -> str | None:
     # la ubicación verdadera ("Tumbes"/"Punta Malpelo"). Se descartan acá
     # TODOS los nombres de embarcación detectados por regex (no solo el de
     # la infractora: estas notas casi siempre nombran también a la
-    # patrullera que intervino).
+    # patrullera que intervino). Comparación por substring en ambos sentidos
+    # (no solo igualdad exacta): caso real (gob.pe, "Regalito de Dios
+    # 3.E.I.G."), spaCy etiquetó el span "Regalito de Dios" como LOC -- sin
+    # el sufijo "3.E.I.G." que sí capturó la regex del nombre completo, así
+    # que la igualdad exacta no lo excluía.
     nombres_embarcacion_low = {n.lower() for n in _todos_los_nombres_de_embarcacion(texto)}
     lugares = [
         ent.text for ent in doc.ents
         if ent.label_ == "LOC"
-        and ent.text.lower() not in ORGANISMOS_NO_LUGAR
-        and ent.text.strip().lower() not in nombres_embarcacion_low
+        and not any(org in ent.text.lower() for org in ORGANISMOS_NO_LUGAR)
+        and not any(ent.text.strip().lower() in n or n in ent.text.strip().lower() for n in nombres_embarcacion_low)
     ]
     if not lugares:
         return None
@@ -369,7 +416,7 @@ def extraer(titulo: str, texto: str) -> ExtraccionLocal:
             debug={"positivas": n_positivas, "motivo": "sin embarcación ni matrícula"},
         )
 
-    doc = _nlp()(texto[:5000])
+    doc = _nlp()(texto[:MAX_CHARS_NER])
     return ExtraccionLocal(
         es_relevante=True,
         titular=titulo,

@@ -25,6 +25,11 @@ DATASET_ESFUERZO = "public-global-fishing-effort:latest"
 EVENTS_API_URL = "https://gateway.api.globalfishingwatch.org/v3/events"
 DATASET_VISITAS_PUERTO = "public-global-port-visits-events:latest"
 
+# Reutiliza la conexión TCP/TLS entre llamadas (este cliente corre en el
+# mismo proceso del servidor durante toda su vida) en vez de que cada
+# requests.get/post abra una conexión nueva.
+_session = requests.Session()
+
 
 def obtener_ultima_visita_puerto(vessel_id: str) -> dict | None:
     """Última visita a puerto (real, de la Events API) para un vessel_id DE
@@ -48,7 +53,7 @@ def obtener_ultima_visita_puerto(vessel_id: str) -> dict | None:
         "offset": 0,
     }
     headers = {"Authorization": f"Bearer {token}"}
-    resp = requests.get(EVENTS_API_URL, headers=headers, params=params, timeout=30)
+    resp = _session.get(EVENTS_API_URL, headers=headers, params=params, timeout=30)
     resp.raise_for_status()
     entradas = resp.json().get("entries", [])
     if not entradas:
@@ -83,7 +88,7 @@ def _consultar(dataset: str, desde: str, hasta: str, geojson: dict) -> list[dict
         "format": "JSON",
     }
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    resp = requests.post(API_URL, headers=headers, params=params, json={"geojson": geojson}, timeout=60)
+    resp = _session.post(API_URL, headers=headers, params=params, json={"geojson": geojson}, timeout=60)
     resp.raise_for_status()
     data = resp.json()
 

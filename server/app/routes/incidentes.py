@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
+from ..auth_dep import usuario_actual
 from ..db import ejecutar_sp, get_cursor
 
 router = APIRouter()
@@ -86,9 +87,9 @@ def mmsi_reportados():
 
 # Botón "Descartar" en la fila de un incidente (IncidentsTable).
 @router.post("/{codigo}/descartar", status_code=204)
-def descartar(codigo: str):
+def descartar(codigo: str, usuario: dict = Depends(usuario_actual)):
     with get_cursor() as cur:
-        ejecutar_sp(cur, "SELECT sp_incidentes_descartar(%s)", (codigo,))
+        ejecutar_sp(cur, "SELECT sp_incidentes_descartar(%s, %s)", (codigo, usuario["sub"]))
 
 
 # Botón "Confirmar" en la fila de un incidente (IncidentsTable): el analista
@@ -96,9 +97,9 @@ def descartar(codigo: str):
 # (recién ahí se resalta la embarcación en rojo en el mapa, ver
 # mmsi_con_incidente arriba).
 @router.post("/{codigo}/confirmar", status_code=204)
-def confirmar(codigo: str):
+def confirmar(codigo: str, usuario: dict = Depends(usuario_actual)):
     with get_cursor() as cur:
-        ejecutar_sp(cur, "SELECT sp_incidentes_confirmar(%s)", (codigo,))
+        ejecutar_sp(cur, "SELECT sp_incidentes_confirmar(%s, %s)", (codigo, usuario["sub"]))
 
 
 # Catálogo para el formulario de "Reportar incidencia" (sidebar).
@@ -130,7 +131,7 @@ def _vincular_o_crear_embarcacion(
 # a mano del catálogo -- para cuando el analista se entera por otra vía:
 # llamada, denuncia, inspección).
 @router.post("", status_code=201)
-def registrar(body: dict = Body(...)):
+def registrar(body: dict = Body(...), usuario: dict = Depends(usuario_actual)):
     tipo_alerta = body.get("tipoAlerta")
     tipo_infraccion_id_manual = body.get("tipoInfraccionId")
     descripcion = body.get("descripcion")
@@ -182,8 +183,8 @@ def registrar(body: dict = Body(...)):
         # tras recargar el mapa) vive dentro de sp_incidentes_registrar.
         ejecutar_sp(
             cur,
-            "SELECT * FROM sp_incidentes_registrar(%s, %s, %s, %s, %s, %s, %s, %s)",
-            (embarcacion_id, tipo["id"], descripcion.strip(), gravedad, lat, lon, fecha, zona_id),
+            "SELECT * FROM sp_incidentes_registrar(%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (embarcacion_id, tipo["id"], descripcion.strip(), gravedad, lat, lon, fecha, zona_id, usuario["sub"]),
         )
         incidente = cur.fetchone()
 

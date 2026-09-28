@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from starlette import status
 
+from ..auth_dep import usuario_actual
 from ..db import ejecutar_sp, get_cursor
 from ..gfw import consultar_gfw_con_cache
 from .incidentes import _vincular_o_crear_embarcacion
@@ -50,16 +51,16 @@ def listar():
 
 
 @router.post("/{sugerencia_id}/rechazar", status_code=status.HTTP_204_NO_CONTENT)
-def rechazar(sugerencia_id: str):
+def rechazar(sugerencia_id: str, usuario: dict = Depends(usuario_actual)):
     with get_cursor() as cur:
-        ejecutar_sp(cur, "SELECT sp_sugerencias_rechazar(%s)", (sugerencia_id,))
+        ejecutar_sp(cur, "SELECT sp_sugerencias_rechazar(%s, %s)", (sugerencia_id, usuario["sub"]))
 
 
 # Promueve la sugerencia a un incidente real (mismo flujo que "Registrar
 # Incidente" desde una alerta de monitoreo). Si la IA no determinó un tipo
 # de infracción, el analista debe indicarlo en el body.
 @router.post("/{sugerencia_id}/aprobar")
-def aprobar(sugerencia_id: str, body: dict = Body(default={})):
+def aprobar(sugerencia_id: str, body: dict = Body(default={}), usuario: dict = Depends(usuario_actual)):
     tipo_infraccion_id_override = body.get("tipo_infraccion_id")
 
     with get_cursor() as cur:
@@ -117,6 +118,6 @@ def aprobar(sugerencia_id: str, body: dict = Body(default={})):
         incidente = cur.fetchone()
 
     with get_cursor() as cur:
-        ejecutar_sp(cur, "SELECT sp_sugerencias_aprobar_vincular(%s, %s)", (sugerencia_id, incidente["id"]))
+        ejecutar_sp(cur, "SELECT sp_sugerencias_aprobar_vincular(%s, %s, %s)", (sugerencia_id, incidente["id"], usuario["sub"]))
 
     return {"incidente": incidente}

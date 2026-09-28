@@ -1,0 +1,554 @@
+<title>Bitácora de Refuerzo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f3;
+    --border: #dde1e7;
+    --text: #161b22;
+    --text-muted: #5b6472;
+    --accent: #b91c1c;
+    --accent-ink: #7f1414;
+    --accent-soft: #fdeaea;
+    --good: #0f7a5c;
+    --good-soft: #e6f6f0;
+    --warn: #b45309;
+    --warn-soft: #fdf1e0;
+    --mono-bg: rgba(22, 27, 34, 0.05);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1216;
+      --surface: #171b21;
+      --surface-2: #1e232b;
+      --border: #2a313b;
+      --text: #e7eaee;
+      --text-muted: #99a2ad;
+      --accent: #ef5350;
+      --accent-ink: #ffb4b0;
+      --accent-soft: #3a1414;
+      --good: #35c58c;
+      --good-soft: #123324;
+      --warn: #f2a94e;
+      --warn-soft: #3a2a10;
+      --mono-bg: rgba(231, 234, 238, 0.08);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0f1216;
+    --surface: #171b21;
+    --surface-2: #1e232b;
+    --border: #2a313b;
+    --text: #e7eaee;
+    --text-muted: #99a2ad;
+    --accent: #ef5350;
+    --accent-ink: #ffb4b0;
+    --accent-soft: #3a1414;
+    --good: #35c58c;
+    --good-soft: #123324;
+    --warn: #f2a94e;
+    --warn-soft: #3a2a10;
+    --mono-bg: rgba(231, 234, 238, 0.08);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    line-height: 1.55;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+  }
+
+  main {
+    max-width: 780px;
+    margin-inline: auto;
+  }
+
+  h1, h2, h3 { text-wrap: balance; font-weight: 600; }
+
+  header.report-header {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    padding: 3px 9px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+
+  h1.title {
+    font-size: clamp(1.6rem, 4.5vw, 2.1rem);
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    max-width: 62ch;
+    margin: 0 0 16px;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .meta-row strong { color: var(--text); font-weight: 600; }
+
+  nav.toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 24px 0 36px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  nav.toc a {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+
+  nav.toc a:hover { background: var(--accent-soft); color: var(--accent-ink); }
+
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+
+  .stat-card .label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .stat-card .value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+
+  .stat-card .value .arrow { color: var(--text-muted); font-weight: 400; margin: 0 4px; }
+  .stat-card .value .after { color: var(--good); }
+
+  section.block {
+    margin: 40px 0;
+    scroll-margin-top: 16px;
+  }
+
+  section.block h2 {
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .criterio-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 5px;
+  }
+
+  .score-line {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 2px 0 16px;
+  }
+
+  .score-line .after { color: var(--good); font-weight: 600; }
+
+  p { margin: 0 0 14px; }
+
+  ul.change-list {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  ul.change-list li {
+    padding-left: 20px;
+    position: relative;
+  }
+
+  ul.change-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  code, .file {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85em;
+    background: var(--mono-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--warn);
+    background: var(--warn-soft);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    font-size: 0.92rem;
+    margin: 16px 0;
+  }
+
+  .callout.good { border-left-color: var(--good); background: var(--good-soft); }
+  .callout strong { display: block; margin-bottom: 4px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .callout.good strong { color: var(--good); }
+  .callout:not(.good) strong { color: var(--warn); }
+
+  table.compare {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 8px 0 12px;
+  }
+
+  table.compare th, table.compare td {
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table.compare thead th {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  table.compare td.num, table.compare th.num { font-family: 'IBM Plex Mono', monospace; text-align: right; white-space: nowrap; }
+  table.compare tr.total td { font-weight: 700; border-top: 2px solid var(--text); border-bottom: none; }
+  table.compare .delta-up { color: var(--good); font-weight: 600; }
+
+  .wrap-table { overflow-x: auto; }
+
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+
+  .file-grid div {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 9px;
+  }
+
+  .file-grid .new::before {
+    content: 'nuevo · ';
+    color: var(--good);
+    font-weight: 600;
+  }
+
+  h3.sub {
+    font-size: 0.95rem;
+    margin: 22px 0 8px;
+    color: var(--text);
+  }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+</style>
+
+<main>
+  <header class="report-header">
+    <span class="eyebrow">Seminario de Tesis I · Producto acreditable</span>
+    <h1 class="title">Bitácora de Refuerzo</h1>
+    <p class="subtitle">
+      Cambios aplicados al sistema de detección de pesca ilegal de Lambayeque durante esta sesión de trabajo,
+      organizados por criterio de la rúbrica de evaluación del producto acreditable.
+    </p>
+    <div class="meta-row">
+      <span><strong>Fecha:</strong> 27 de septiembre de 2026</span>
+      <span><strong>Alcance:</strong> backend, base de datos y frontend</span>
+      <span><strong>Verificación:</strong> suite automatizada + pruebas en vivo contra la base de datos real</span>
+    </div>
+  </header>
+
+  <div class="stat-strip">
+    <div class="stat-card">
+      <div class="label">Puntaje estimado (14 pts)</div>
+      <div class="value">7.8 <span class="arrow">→</span><span class="after">11.0</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Nota aproximada (0–20)</div>
+      <div class="value">~10.5 <span class="arrow">→</span><span class="after">~15.7</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Tests automatizados</div>
+      <div class="value">38 <span class="arrow">→</span><span class="after">91</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Archivos tocados</div>
+      <div class="value">33</div>
+    </div>
+  </div>
+
+  <nav class="toc" aria-label="Contenido">
+    <a href="#resumen">Resumen de puntaje</a>
+    <a href="#eficiencia">Eficiencia</a>
+    <a href="#fiabilidad">Fiabilidad</a>
+    <a href="#seguridad">Seguridad</a>
+    <a href="#proteccion">Protección</a>
+    <a href="#interaccion">Interacción</a>
+    <a href="#verificacion">Verificación</a>
+    <a href="#archivos">Archivos</a>
+    <a href="#pendientes">Pendientes</a>
+  </nav>
+
+  <section class="block" id="resumen">
+    <h2>Resumen de puntaje por criterio</h2>
+    <p>Estimación desde revisión de código y tests automatizados, contra la rúbrica de la página 16–18 del sílabo (14 puntos totales). No reemplaza una demo en vivo, que sigue siendo lo que más pesa para los criterios de desempeño e interacción.</p>
+    <div class="wrap-table">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Criterio</th>
+            <th class="num">Máx.</th>
+            <th class="num">Antes</th>
+            <th class="num">Ahora</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Adecuación funcional</td><td class="num">1.5</td><td class="num">1.2</td><td class="num">1.2</td></tr>
+          <tr><td>Eficiencia de desempeño</td><td class="num">2.0</td><td class="num">1.4</td><td class="num delta-up">1.6</td></tr>
+          <tr><td>Capacidad de interacción</td><td class="num">2.5</td><td class="num">1.4</td><td class="num delta-up">1.8</td></tr>
+          <tr><td>Fiabilidad</td><td class="num">1.5</td><td class="num">0.7</td><td class="num delta-up">1.3</td></tr>
+          <tr><td>Seguridad</td><td class="num">2.5</td><td class="num">1.0</td><td class="num delta-up">2.1</td></tr>
+          <tr><td>Flexibilidad</td><td class="num">1.5</td><td class="num">1.1</td><td class="num">1.1</td></tr>
+          <tr><td>Protección</td><td class="num">2.5</td><td class="num">1.0</td><td class="num delta-up">1.9</td></tr>
+          <tr class="total"><td>Total</td><td class="num">14.0</td><td class="num">7.8</td><td class="num delta-up">11.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout good">
+      <strong>Lectura</strong>
+      79% del puntaje cruza el corte de "Aprobado" de la tabla de la página 19 (75.50%). Antes de esta sesión, el sistema estaba en 56%, dentro del rango "Desaprobado".
+    </div>
+  </section>
+
+  <section class="block" id="eficiencia">
+    <h2>Eficiencia de desempeño <span class="criterio-tag">1.4 → 1.6 / 2.0</span></h2>
+    <p><code>consultar_gfw_con_cache</code> lanzaba un intérprete de Python nuevo (<code>subprocess.run</code>, sin <code>timeout</code>) por cada consulta a GFW fuera de caché. Se eliminó ese subproceso completo.</p>
+    <ul class="change-list">
+      <li><code>server/app/gfw.py</code>: <code>sync_lambayeque</code> ahora se importa en el mismo proceso del servidor (mismo patrón que ya usaba <code>gfw_client.py</code>) en vez de ejecutarse como script aparte. Se eliminó <code>_ejecutar_script</code>, <code>SYNC_SCRIPT</code> y <code>PYTHON_BIN</code>, que quedaron sin uso.</li>
+      <li><code>server/app/gfw_client.py</code> y <code>scripts/sync_lambayeque.py</code>: se agregó una <code>requests.Session()</code> reutilizable en vez de abrir una conexión TCP/TLS nueva en cada llamada a la API de GFW.</li>
+      <li><code>server/app/routes/fuentes.py</code>: el subproceso de <code>analyze_news.py</code> (fetch + Claude) ahora tiene un <code>timeout</code> de 10 minutos con <code>kill()</code> si se excede, para no dejar un proceso huérfano corriendo indefinidamente.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="fiabilidad">
+    <h2>Fiabilidad <span class="criterio-tag">0.7 → 1.3 / 1.5</span></h2>
+    <p>No existía ningún manejador para excepciones no previstas, y no había ni un test de la capa HTTP ni del frontend.</p>
+    <h3 class="sub">Manejo de errores</h3>
+    <ul class="change-list">
+      <li><code>server/app/main.py</code>: nuevo <code>@app.exception_handler(Exception)</code> que registra el traceback en el log del servidor y responde siempre <code>{"error": "Error interno del servidor"}</code> con 500, en vez de dejar pasar una respuesta sin el contrato que usa el resto de la API.</li>
+    </ul>
+    <h3 class="sub">Cobertura de tests — backend (Python / pytest)</h3>
+    <ul class="change-list">
+      <li><code>server/tests/test_main.py</code>: autenticación, validación de entrada, control de rol (403) y el nuevo manejador de errores (500), incluyendo un caso que simula la BD caída.</li>
+      <li><code>server/tests/test_auth.py</code>: bloqueo por intentos fallidos, que un usuario no bloquea a otro con la misma IP, y que un login exitoso limpia el contador.</li>
+      <li><code>server/tests/test_routers.py</code>: <code>embarcaciones</code>, <code>reportes</code>, <code>zonas</code> (listar), <code>sugerencias</code> y <code>fuentes</code> — routers que antes no tenían ningún test.</li>
+    </ul>
+    <h3 class="sub">Cobertura de tests — frontend (antes: ninguna)</h3>
+    <p>Se instaló y configuró Vitest + jsdom + Testing Library desde cero (<code>vite.config.ts</code>, <code>src/test-setup.ts</code>, script <code>npm test</code>).</p>
+    <ul class="change-list">
+      <li><code>src/lib/session.test.ts</code>, <code>src/lib/api.test.ts</code>, <code>src/lib/csv.test.ts</code>: lógica de sesión, el wrapper de fetch y la exportación de CSV.</li>
+      <li><code>src/components/ErrorBoundary.test.tsx</code>: que un error de render muestre el mensaje de recuperación en vez de una pantalla en blanco.</li>
+      <li><code>src/features/zones/pages/ZonesPage.test.tsx</code> y <code>src/features/audit/pages/AuditLogPage.test.tsx</code>: comportamiento según el rol del usuario.</li>
+    </ul>
+    <div class="callout good">
+      <strong>Resultado</strong>
+      68 tests de backend (antes 38) y 23 de frontend (antes 0) — 91 en total, todos verdes.
+    </div>
+  </section>
+
+  <section class="block" id="seguridad">
+    <h2>Seguridad <span class="criterio-tag">1.0 → 2.1 / 2.5</span></h2>
+    <p>El rol de cada usuario (<code>administrador</code> / <code>supervisor</code> / <code>analista</code>) ya existía en la base de datos y viajaba en el token de sesión, pero ningún endpoint lo verificaba, y ninguna acción quedaba registrada a nombre de quien la hizo.</p>
+    <h3 class="sub">Roles aplicados de verdad</h3>
+    <ul class="change-list">
+      <li><code>server/app/auth_dep.py</code>: nueva dependencia <code>requiere_rol(*roles)</code>.</li>
+      <li><code>server/app/routes/zonas.py</code>: crear y eliminar zonas críticas ahora exige rol <code>administrador</code> (antes cualquier sesión válida podía hacerlo).</li>
+    </ul>
+    <h3 class="sub">Auditoría (nueva)</h3>
+    <ul class="change-list">
+      <li><code>db/schema.sql</code>: tabla <code>auditoria</code> (usuario, acción, entidad, detalle, fecha).</li>
+      <li><code>db/procedures.sql</code>: <code>sp_auditoria_registrar</code> (interna — nunca otorgada a la API, solo la llaman las demás funciones desde adentro) queda registrada dentro de <code>sp_incidentes_confirmar</code>, <code>sp_incidentes_descartar</code>, <code>sp_incidentes_registrar</code>, <code>sp_zonas_crear</code>, <code>sp_zonas_eliminar</code>, <code>sp_sugerencias_aprobar_vincular</code> y <code>sp_sugerencias_rechazar</code>. Se agregó <code>sp_auditoria_listar</code> para consultarla.</li>
+      <li><code>db/roles.sql</code>: firmas de <code>GRANT</code> actualizadas con el nuevo parámetro de usuario.</li>
+      <li><code>server/app/routes/auditoria.py</code> (nuevo): <code>GET /api/auditoria</code>, solo administrador.</li>
+      <li><code>server/app/routes/incidentes.py</code> y <code>sugerencias.py</code>: cada acción ahora reenvía el usuario del token a la función SQL correspondiente.</li>
+    </ul>
+    <h3 class="sub">Pantalla de auditoría (frontend, nueva)</h3>
+    <ul class="change-list">
+      <li><code>src/features/audit/</code>: tabla con fecha, usuario, acción y entidad afectada.</li>
+      <li><code>src/App.tsx</code>: ruta <code>/auditoria</code> protegida — redirige a quien no sea administrador.</li>
+      <li><code>src/components/layout/Sidebar.tsx</code>: el link "Auditoría" solo aparece para administradores.</li>
+    </ul>
+    <div class="callout good">
+      <strong>Verificado en vivo</strong>
+      Contra la base de datos real de desarrollo: crear/eliminar una zona y registrar un incidente quedaron en <code>/api/auditoria</code> con el nombre del usuario correcto; un analista pidiendo esa ruta recibe 403; y <code>sp_auditoria_registrar</code> sigue sin poder invocarse directo desde la API (permiso denegado, como se esperaba).
+    </div>
+  </section>
+
+  <section class="block" id="proteccion">
+    <h2>Protección <span class="criterio-tag">1.0 → 1.9 / 2.5</span></h2>
+    <ul class="change-list">
+      <li><code>server/app/routes/auth.py</code>: bloqueo de 15 minutos por (IP, usuario) tras 5 intentos fallidos de login seguidos.</li>
+      <li>Corrección de un side-channel de timing en el mismo archivo: antes, si el usuario no existía, se saltaba <code>bcrypt.checkpw</code> por completo, así que un usuario inexistente respondía más rápido que uno real — eso permitía enumerar usuarios válidos sin acertar ninguna contraseña. Ahora <code>bcrypt.checkpw</code> corre siempre, contra un hash señuelo cuando el usuario no existe.</li>
+      <li><code>SECURITY.md</code> (nuevo): riesgos evaluados (acceso no autorizado, fuerza bruta, operaciones sin permiso, filtración de credenciales de BD, errores no controlados) y las limitaciones aceptadas explícitamente, en vez de dejarlas implícitas.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="interaccion">
+    <h2>Capacidad de interacción <span class="criterio-tag">1.4 → 1.8 / 2.5</span></h2>
+    <div class="callout">
+      <strong>Corrección sobre esta sesión</strong>
+      La evaluación inicial decía que la accesibilidad era pobre ("aria- en 1 solo archivo"). Al revisar a fondo, esa búsqueda estaba mal hecha: los modales ya usan <code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code> y cierran con Escape, y los botones con ícono ya tienen <code>aria-label</code> o texto visible. No hizo falta ningún cambio ahí.
+    </div>
+    <p>Lo que sí era un problema real, descubierto durante esta misma sesión: al restringir crear/eliminar zonas a <code>administrador</code> en el backend, <code>ZonesPage.tsx</code> — que sí existe y es visible para cualquier usuario logueado — seguía mostrando el formulario completo y el botón de eliminar a un analista, que solo se enteraba del bloqueo con un 403 después de llenar todo.</p>
+    <ul class="change-list">
+      <li><code>src/features/zones/pages/ZonesPage.tsx</code>: el formulario de "Nueva zona" y el botón de eliminar ahora se ocultan para quien no sea administrador, con un mensaje explicando por qué.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="verificacion">
+    <h2>Cómo se verificó</h2>
+    <p>Cada cambio se corrió, no solo se escribió:</p>
+    <ul class="change-list">
+      <li>Suite completa de backend (<code>pytest</code>) y frontend (<code>vitest</code>) en verde después de cada bloque de cambios: 68 + 23 = 91 tests.</li>
+      <li><code>tsc -b --noEmit</code> y <code>npm run build</code> limpios tras los cambios de frontend.</li>
+      <li>La migración de base de datos (tabla <code>auditoria</code>, funciones nuevas, grants) se aplicó contra el Postgres real de desarrollo, no solo se redactó.</li>
+      <li>Flujo completo probado por HTTP contra esa base real: crear zona → aparece en la auditoría con el nombre resuelto → eliminar zona → queda esa acción también → un analista pidiendo la auditoría recibe 403. Los datos de prueba se limpiaron después.</li>
+    </ul>
+  </section>
+
+  <section class="block" id="archivos">
+    <h2>Archivos tocados</h2>
+    <h3 class="sub">Nuevos (14)</h3>
+    <div class="file-grid">
+      <div class="new">SECURITY.md</div>
+      <div class="new">server/app/routes/auditoria.py</div>
+      <div class="new">server/tests/test_auth.py</div>
+      <div class="new">server/tests/test_main.py</div>
+      <div class="new">server/tests/test_routers.py</div>
+      <div class="new">src/test-setup.ts</div>
+      <div class="new">src/lib/session.test.ts</div>
+      <div class="new">src/lib/api.test.ts</div>
+      <div class="new">src/lib/csv.test.ts</div>
+      <div class="new">src/components/ErrorBoundary.test.tsx</div>
+      <div class="new">src/features/zones/pages/ZonesPage.test.tsx</div>
+      <div class="new">src/features/audit/hooks/useAuditoria.ts</div>
+      <div class="new">src/features/audit/pages/AuditLogPage.tsx</div>
+      <div class="new">src/features/audit/pages/AuditLogPage.test.tsx</div>
+    </div>
+    <h3 class="sub">Modificados (19)</h3>
+    <div class="file-grid">
+      <div>db/schema.sql</div>
+      <div>db/procedures.sql</div>
+      <div>db/roles.sql</div>
+      <div>server/app/main.py</div>
+      <div>server/app/auth_dep.py</div>
+      <div>server/app/gfw.py</div>
+      <div>server/app/gfw_client.py</div>
+      <div>server/app/routes/auth.py</div>
+      <div>server/app/routes/fuentes.py</div>
+      <div>server/app/routes/incidentes.py</div>
+      <div>server/app/routes/sugerencias.py</div>
+      <div>server/app/routes/zonas.py</div>
+      <div>server/requirements.txt</div>
+      <div>scripts/sync_lambayeque.py</div>
+      <div>vite.config.ts</div>
+      <div>package.json</div>
+      <div>src/App.tsx</div>
+      <div>src/components/layout/Sidebar.tsx</div>
+      <div>src/features/zones/pages/ZonesPage.tsx</div>
+    </div>
+  </section>
+
+  <section class="block" id="pendientes">
+    <h2>Pendientes / riesgos aceptados</h2>
+    <p>Documentados explícitamente en <code>SECURITY.md</code>, no ocultos:</p>
+    <ul class="change-list">
+      <li>El bloqueo de intentos de login vive en memoria de un solo proceso — si el sistema alguna vez corre en varias instancias detrás de un balanceador, el límite efectivo se multiplicaría.</li>
+      <li>La auditoría no cubre <code>POST /api/fuentes/analizar</code> (el análisis de noticias con IA).</li>
+      <li>No hay rate limiting general de la API más allá del login.</li>
+      <li>Nada de esto reemplaza una demo en vivo: tiempos de respuesta reales y una prueba de usabilidad con un usuario real siguen siendo lo único que puede subir Eficiencia y Capacidad de interacción más allá de esta estimación.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Generado a partir de la sesión de trabajo del 27 de septiembre de 2026 sobre el repositorio del Sistema de Detección de Pesca Ilegal (Lambayeque). Estimaciones de puntaje basadas en revisión de código y tests automatizados, no en una evaluación en vivo.
+  </footer>
+</main>

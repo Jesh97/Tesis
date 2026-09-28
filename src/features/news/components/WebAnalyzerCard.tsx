@@ -65,18 +65,19 @@ export function WebAnalyzerCard({ onAnalizar }: WebAnalyzerCardProps) {
         </div>
 
         <p className="mt-3 text-xs leading-relaxed text-slate-500">
-          Ingrese uno o múltiples enlaces HTTP/HTTPS. Cada enlace debe ir en una nueva línea.
+          Ingrese uno o múltiples enlaces HTTP/HTTPS: noticias o reportes en PDF (por ejemplo, de la Marina
+          de Guerra del Perú/DICAPI). Cada enlace debe ir en una nueva línea.
         </p>
 
         <label htmlFor="source-urls" className="mt-4 block text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
-          URLs de fuentes
+          URLs de fuentes (noticias o PDF)
         </label>
         <textarea
           id="source-urls"
           rows={5}
           value={urls}
           onChange={(event) => setUrls(event.target.value)}
-          placeholder={'https://ejemplo.com/noticia-pesca-1\nhttps://ejemplo.com/reporte-incautacion'}
+          placeholder={'https://ejemplo.com/noticia-pesca-1\nhttps://marina.mil.pe/reportes/incidente-dicapi.pdf'}
           className="mt-2 w-full resize-none rounded-lg border border-slate-300 bg-slate-50 p-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
         />
 

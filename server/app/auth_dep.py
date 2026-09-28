@@ -8,7 +8,7 @@ from pathlib import Path
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -43,3 +43,19 @@ def usuario_actual(authorization: str | None = Header(default=None)) -> dict:
         return jwt.decode(token, SESSION_SECRET, algorithms=[ALGORITMO])
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail={"error": "Sesión inválida o expirada"})
+
+
+def requiere_rol(*roles_permitidos: str):
+    """Dependencia de FastAPI para acciones de configuración (crear/eliminar
+    zonas, por ahora) que no cualquier sesión válida debería poder hacer --
+    a diferencia de confirmar/descartar un incidente o aprobar una
+    sugerencia, que son el trabajo normal de cualquier analista. Exige
+    primero una sesión válida (usuario_actual) y además que el rol del token
+    esté en roles_permitidos (ver rol_usuario en db/schema.sql)."""
+
+    def _verificar(usuario: dict = Depends(usuario_actual)) -> dict:
+        if usuario["rol"] not in roles_permitidos:
+            raise HTTPException(status_code=403, detail={"error": "No tienes permiso para realizar esta acción"})
+        return usuario
+
+    return _verificar

@@ -366,6 +366,30 @@ CREATE INDEX idx_sugerencias_estado ON incidentes_sugeridos_ia (estado);
 CREATE INDEX idx_sugerencias_fuente ON incidentes_sugeridos_ia (fuente_id);
 
 -- =========================================================
+-- Auditoría: quién confirmó/descartó un incidente, creó/eliminó una zona o
+-- aprobó/rechazó una sugerencia, y cuándo -- ver sp_auditoria_registrar en
+-- procedures.sql (se llama desde dentro de esas funciones, nunca por
+-- separado). app_runtime no tiene ningún privilegio directo sobre esta
+-- tabla (igual que el resto, ver db/roles.sql): solo puede leerla a través
+-- de sp_auditoria_listar.
+-- =========================================================
+
+CREATE TABLE auditoria (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Sin ON DELETE CASCADE a propósito: si un usuario se desactiva o se
+  -- borra, su rastro en la auditoría debe seguir existiendo.
+  usuario_id uuid REFERENCES usuarios (id),
+  accion varchar(50) NOT NULL,
+  entidad varchar(30) NOT NULL,
+  entidad_id varchar(100),
+  detalle jsonb,
+  creado_en timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_auditoria_entidad ON auditoria (entidad, entidad_id);
+CREATE INDEX idx_auditoria_creado_en ON auditoria (creado_en DESC);
+
+-- =========================================================
 -- Vistas para el dashboard de reportes (ReportsPage)
 -- =========================================================
 

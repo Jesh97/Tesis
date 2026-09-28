@@ -38,6 +38,7 @@ CASOS_RELEVANTES = [
     ("rossana_l", "Incursión en Zona Económica Exclusiva", "Rossana L"),
     ("hong_run_668", "Visita a Puerto no Autorizado", "Hong Run 668"),
     ("mantaro_malpelo", "Pesca en Zona Prohibida", "Mantaro"),
+    ("regalito_de_dios", "Falta de Permiso", "Regalito de Dios 3.E.I.G."),
 ]
 
 
@@ -82,6 +83,40 @@ def test_mantaro_malpelo_no_confunde_nombre_de_embarcacion_con_ubicacion():
     # frecuencia y pisaban la ubicación real del hecho.
     resultado = _extraer("mantaro_malpelo")
     assert resultado.ubicacion_estimada not in ("Mantaro", "Río Piura")
+
+
+def test_marcona_extrae_lugar_de_capitania_de_puerto():
+    # Regresión: a diferencia de "regalito_de_dios" (donde spaCy PARTE la
+    # frase en dos entidades), acá spaCy captura TODO junto como una sola
+    # entidad LOC ("Capitanía de Puerto de San Juan de Marcona") -- filtrarla
+    # por contener "capitanía" tiraba el lugar real con la institución
+    # (ubicacion_estimada salía None). RE_CAPITANIA_DE debe capturar el lugar
+    # directo del texto en vez de depender del NER para este caso.
+    resultado = _extraer("marcona_erizo")
+    assert resultado.ubicacion_estimada == "San Juan de Marcona"
+
+
+def test_marcona_no_fuerza_tipo_infraccion_que_no_calza():
+    # La nota es sobre extracción de una especie protegida (erizo rojo,
+    # veda), no sobre una zona prohibida ni falta de permiso -- no hay
+    # categoría en TIPO_INFRACCION_PALABRAS que describa "especie protegida",
+    # así que tipo_infraccion=None acá es la respuesta HONESTA, no un bug.
+    # Este test existe para que un futuro cambio no lo fuerce a matchear una
+    # categoría que no corresponde solo para no dejarlo en None.
+    resultado = _extraer("marcona_erizo")
+    assert resultado.tipo_infraccion is None
+
+
+def test_regalito_de_dios_no_confunde_institucion_con_ubicacion():
+    # Regresión: spaCy partió "La Capitanía de Puerto de Zorritos" en DOS
+    # entidades LOC separadas ("La Capitanía" y "Puerto de Zorritos"). Con
+    # igualdad exacta contra ORGANISMOS_NO_LUGAR, "capitanía" ni estaba en la
+    # lista -- "La Capitanía" ganaba por aparecer primero en el texto (ambas
+    # entidades se repiten solo una vez). Ahora el filtro es por substring y
+    # la lista incluye "capitanía", así que debería quedar "Puerto de
+    # Zorritos" (el lugar real) en vez de la institución.
+    resultado = _extraer("regalito_de_dios")
+    assert "Capitanía" not in (resultado.ubicacion_estimada or "")
 
 
 # ---------------------------------------------------------------------------

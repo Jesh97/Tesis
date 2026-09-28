@@ -1,7 +1,7 @@
 import hashlib
 import json
 import os
-import subprocess
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -14,8 +14,17 @@ from . import gfw_client
 from . import modelo
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # raíz del repo
-SYNC_SCRIPT = BASE_DIR / "scripts" / "sync_lambayeque.py"
-PYTHON_BIN = os.getenv("PYTHON_BIN", "python")
+
+# scripts/sync_lambayeque.py expone construir_geojson_bbox/LAMBAYEQUE_BBOX y
+# la lógica para agrupar filas de GFW por embarcación (ver consultar_gfw_con_cache
+# más abajo). Se importa en el mismo proceso -- igual que ya hace gfw_client.py
+# para el resto de las consultas -- en vez de lanzarlo como subproceso: evitar
+# un intérprete de Python nuevo (con sus imports) por cada consulta fuera de
+# cache, sin timeout ni serialización por stdout de por medio.
+_SCRIPTS_DIR = BASE_DIR / "scripts"
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+import sync_lambayeque  # noqa: E402 (necesita el sys.path.insert de arriba)
 
 T = TypeVar("T")
 I = TypeVar("I")
@@ -67,20 +76,6 @@ def _escribir_cache_disco(clave: str, expira: float, valor: object) -> None:
         pass  # la cache en disco es una optimización, no algo de lo que dependa la respuesta
 
 
-def _ejecutar_script(script_path: Path, args: list[str]) -> object:
-    proc = subprocess.run(
-        [PYTHON_BIN, str(script_path), *args],
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or f"El script de Python terminó con código {proc.returncode}")
-    try:
-        return json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        raise RuntimeError(f"No se pudo interpretar la salida del script: {proc.stdout[:300]}")
-
-
 def _con_cache(clave: str, ejecutar: Callable[[], T], ttl_segundos: float = CACHE_TTL_SECONDS) -> T:
     cacheado = _cache.get(clave)
     if cacheado and cacheado[0] > time.time():
@@ -112,16 +107,20 @@ def consultar_gfw_con_cache(
     clave_extra: str,
     geojson: dict | None = None,
 ) -> list[dict]:
-    """Corre scripts/sync_lambayeque.py --json: consulta GFW en vivo y
-    devuelve los barcos sin guardar nada en base de datos. Si no se pasa
-    geojson, el script usa por defecto el bbox del mar peruano."""
+    """Consulta GFW en vivo (vía sync_lambayeque, en el mismo proceso -- ver
+    el import arriba) y devuelve los barcos sin guardar nada en base de
+    datos. Si no se pasa geojson, usa por defecto el bbox de la jurisdicción
+    de Lambayeque (LAMBAYEQUE_BBOX)."""
     clave = f"barcos|{clave_extra}|{desde}|{hasta}"
 
     def ejecutar() -> list[dict]:
-        args = ["--json", "--desde", desde, "--hasta", hasta]
-        if geojson:
-            args += ["--geojson", json.dumps(geojson)]
-        return _ejecutar_script(SYNC_SCRIPT, args)  # type: ignore[return-value]
+        token = os.getenv("GFW_API_TOKEN")
+        if not token:
+            raise RuntimeError("Falta GFW_API_TOKEN")
+        geo = geojson or sync_lambayeque.construir_geojson_bbox(sync_lambayeque.LAMBAYEQUE_BBOX)
+        barcos = sync_lambayeque.obtener_barcos_en_zona(token, desde, hasta, geo)
+        agrupados = sync_lambayeque.agrupar_por_embarcacion(barcos)
+        return [sync_lambayeque.a_json(b) for b in agrupados]
 
     return _con_cache(clave, ejecutar)
 

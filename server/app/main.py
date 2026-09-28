@@ -1,5 +1,6 @@
 import os
 import threading
+import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from .gfw import (
     ejecutar_por_zonas,
     iniciar_precarga_periodica,
 )
+from .routes.auditoria import router as auditoria_router
 from .routes.auth import router as auth_router
 from .routes.embarcaciones import router as embarcaciones_router
 from .routes.fuentes import router as fuentes_router
@@ -35,6 +37,7 @@ from .routes.irregularidades import (
 from .routes.reportes import router as reportes_router
 from .routes.sugerencias import router as sugerencias_router
 from .routes.zonas import router as zonas_router
+from .rate_limit import RateLimitMiddleware
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -91,6 +94,14 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# El orden de los add_middleware() importa: Starlette envuelve el último
+# agregado por afuera de los anteriores, así que CORS (agregado después)
+# queda por fuera de RateLimitMiddleware. Si estuviera al revés, una
+# respuesta 429 (que corta antes de llegar a CORS) saldría sin los headers
+# de CORS y el navegador la reportaría como un error de CORS en vez de
+# dejarle ver el 429 real al frontend.
+app.add_middleware(RateLimitMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -113,6 +124,19 @@ async def validation_exception_handler(_request, exc: RequestValidationError):
     return JSONResponse(status_code=400, content={"error": f'Campo inválido o faltante: "{campo}"'})
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_request, exc: Exception):
+    # Sin esto, cualquier excepción que no sea un HTTPException (un bug, la
+    # BD caída, GFW inalcanzable, el pool de conexiones agotado) se le
+    # devolvía al navegador sin el contrato {"error": ...} que usa el resto
+    # de la API -- el frontend cae al mensaje genérico "Error 500" en vez de
+    # uno propio, y acá no quedaba registro de qué pasó realmente. Se
+    # imprime el traceback completo al log del servidor (para diagnosticar)
+    # y se responde siempre JSON, sin importar qué reviente adentro.
+    traceback.print_exception(type(exc), exc, exc.__traceback__)
+    return JSONResponse(status_code=500, content={"error": "Error interno del servidor"})
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -129,6 +153,7 @@ app.include_router(zonas_router, prefix="/api/zonas", dependencies=_protegida)
 app.include_router(irregularidades_router, prefix="/api/irregularidades", dependencies=_protegida)
 app.include_router(incidentes_router, prefix="/api/incidentes", dependencies=_protegida)
 app.include_router(reportes_router, prefix="/api/reportes", dependencies=_protegida)
+app.include_router(auditoria_router, prefix="/api/auditoria", dependencies=_protegida)
 
 
 if __name__ == "__main__":

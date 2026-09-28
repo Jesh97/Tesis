@@ -140,7 +140,26 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION sp_incidentes_descartar(p_codigo varchar)
+-- Inserta una fila en auditoria (ver db/schema.sql). No se le otorga EXECUTE
+-- a app_runtime (ver db/roles.sql): solo la llaman desde adentro las demás
+-- funciones de este archivo, con los privilegios ya elevados de SECURITY
+-- DEFINER de la función que la invoca, nunca directo desde la API.
+CREATE OR REPLACE FUNCTION sp_auditoria_registrar(
+  p_usuario_id uuid,
+  p_accion varchar,
+  p_entidad varchar,
+  p_entidad_id varchar,
+  p_detalle jsonb DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql AS $$
+BEGIN
+  INSERT INTO auditoria (usuario_id, accion, entidad, entidad_id, detalle)
+  VALUES (p_usuario_id, p_accion, p_entidad, p_entidad_id, p_detalle);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION sp_incidentes_descartar(p_codigo varchar, p_usuario_id uuid DEFAULT NULL)
 RETURNS void
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
@@ -149,10 +168,11 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION '404|No existe el incidente "%"', p_codigo;
   END IF;
+  PERFORM sp_auditoria_registrar(p_usuario_id, 'incidente_descartado', 'incidente', p_codigo);
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION sp_incidentes_confirmar(p_codigo varchar)
+CREATE OR REPLACE FUNCTION sp_incidentes_confirmar(p_codigo varchar, p_usuario_id uuid DEFAULT NULL)
 RETURNS void
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
@@ -162,6 +182,7 @@ BEGIN
   UPDATE incidentes SET estado = 'confirmado'
     WHERE codigo = p_codigo AND estado = 'sospechoso';
   IF FOUND THEN
+    PERFORM sp_auditoria_registrar(p_usuario_id, 'incidente_confirmado', 'incidente', p_codigo);
     RETURN;
   END IF;
 
@@ -286,13 +307,16 @@ CREATE OR REPLACE FUNCTION sp_incidentes_registrar(
   p_lat numeric,
   p_lon numeric,
   p_fecha timestamptz,
-  p_zona_id uuid DEFAULT NULL
+  p_zona_id uuid DEFAULT NULL,
+  p_usuario_id uuid DEFAULT NULL
 )
 RETURNS TABLE (id uuid, codigo varchar)
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
 DECLARE
   v_existente varchar;
+  v_id uuid;
+  v_codigo varchar;
 BEGIN
   IF p_embarcacion_id IS NOT NULL THEN
     SELECT i.codigo INTO v_existente
@@ -305,10 +329,13 @@ BEGIN
     END IF;
   END IF;
 
-  RETURN QUERY
   INSERT INTO incidentes (embarcacion_id, tipo_infraccion_id, descripcion, gravedad, estado, latitud, longitud, fecha_deteccion, zona_id)
   VALUES (p_embarcacion_id, p_tipo_infraccion_id, p_descripcion, p_gravedad, 'sospechoso', p_lat, p_lon, coalesce(p_fecha, now()), p_zona_id)
-  RETURNING incidentes.id, incidentes.codigo;
+  RETURNING incidentes.id, incidentes.codigo INTO v_id, v_codigo;
+
+  PERFORM sp_auditoria_registrar(p_usuario_id, 'incidente_registrado', 'incidente', v_codigo, jsonb_build_object('manual', true));
+
+  RETURN QUERY SELECT v_id, v_codigo;
 END;
 $$;
 
@@ -370,28 +397,47 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION sp_zonas_crear(p_nombre varchar, p_region varchar, p_es_critica boolean, p_poligono jsonb)
+CREATE OR REPLACE FUNCTION sp_zonas_crear(p_nombre varchar, p_region varchar, p_es_critica boolean, p_poligono jsonb, p_usuario_id uuid DEFAULT NULL)
 RETURNS TABLE (id uuid, nombre varchar, region varchar, es_critica boolean, poligono jsonb, creado_en timestamptz)
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
+DECLARE
+  v_id uuid;
 BEGIN
   BEGIN
-    RETURN QUERY
     INSERT INTO zonas (nombre, region, es_critica, poligono)
     VALUES (p_nombre, p_region, p_es_critica, p_poligono)
-    RETURNING zonas.id, zonas.nombre, zonas.region, zonas.es_critica, zonas.poligono, zonas.creado_en;
+    RETURNING zonas.id INTO v_id;
   EXCEPTION WHEN unique_violation THEN
     RAISE EXCEPTION '409|Ya existe una zona con ese nombre y región';
   END;
+
+  PERFORM sp_auditoria_registrar(
+    p_usuario_id, 'zona_creada', 'zona', v_id::varchar,
+    jsonb_build_object('nombre', p_nombre, 'region', p_region)
+  );
+
+  RETURN QUERY
+  SELECT zonas.id, zonas.nombre, zonas.region, zonas.es_critica, zonas.poligono, zonas.creado_en
+  FROM zonas WHERE zonas.id = v_id;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION sp_zonas_eliminar(p_id uuid)
+CREATE OR REPLACE FUNCTION sp_zonas_eliminar(p_id uuid, p_usuario_id uuid DEFAULT NULL)
 RETURNS void
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
+DECLARE
+  v_nombre varchar;
+  v_region varchar;
 BEGIN
-  DELETE FROM zonas WHERE id = p_id;
+  DELETE FROM zonas WHERE id = p_id RETURNING nombre, region INTO v_nombre, v_region;
+  IF FOUND THEN
+    PERFORM sp_auditoria_registrar(
+      p_usuario_id, 'zona_eliminada', 'zona', p_id::varchar,
+      jsonb_build_object('nombre', v_nombre, 'region', v_region)
+    );
+  END IF;
 END;
 $$;
 
@@ -417,7 +463,7 @@ $$;
 -- ya se analizó con éxito, no crea una fila nueva (debe_analizar = false, el
 -- llamador la omite del lote a procesar). Si el intento anterior falló,
 -- reintenta reutilizando la misma fila en vez de duplicarla.
-CREATE OR REPLACE FUNCTION sp_fuentes_crear(p_url text, p_dominio varchar)
+CREATE OR REPLACE FUNCTION sp_fuentes_crear(p_url text, p_dominio varchar, p_usuario_id uuid DEFAULT NULL)
 RETURNS TABLE (id uuid, debe_analizar boolean, estado_actual estado_fuente)
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
@@ -432,6 +478,11 @@ BEGIN
       INSERT INTO fuentes_noticias (url, dominio, estado)
       VALUES (p_url, p_dominio, 'procesando')
       RETURNING fuentes_noticias.id INTO v_id;
+      -- Solo se audita cuando realmente se dispara un análisis nuevo (acá y
+      -- en la rama de reintento más abajo) -- no cuando la URL se omite por
+      -- ya estar en proceso o ya analizada, que no es una acción nueva de
+      -- quien la envió.
+      PERFORM sp_auditoria_registrar(p_usuario_id, 'fuente_analisis_iniciado', 'fuente', v_id::varchar, jsonb_build_object('url', p_url));
       RETURN QUERY SELECT v_id, true, 'procesando'::estado_fuente;
       RETURN;
     EXCEPTION WHEN unique_violation THEN
@@ -442,6 +493,7 @@ BEGIN
 
   IF v_estado IN ('fallida', 'descartada') THEN
     UPDATE fuentes_noticias SET estado = 'procesando', procesado_en = NULL WHERE fuentes_noticias.id = v_id;
+    PERFORM sp_auditoria_registrar(p_usuario_id, 'fuente_analisis_iniciado', 'fuente', v_id::varchar, jsonb_build_object('url', p_url, 'reintento', true));
     RETURN QUERY SELECT v_id, true, 'procesando'::estado_fuente;
   ELSE
     RETURN QUERY SELECT v_id, false, v_estado;
@@ -456,7 +508,17 @@ LANGUAGE plpgsql AS $$
 BEGIN
   RETURN QUERY
   SELECT f.id, f.url, f.dominio, f.estado, f.creado_en, f.procesado_en
-  FROM fuentes_noticias f ORDER BY f.creado_en DESC LIMIT 50;
+  FROM fuentes_noticias f
+  -- Por "última actividad" (COALESCE a creado_en mientras procesado_en es
+  -- NULL, es decir, mientras sigue en 'procesando'), no por creado_en solo:
+  -- una URL que había fallado o sido descartada y se reenvía para
+  -- reprocesar (sp_fuentes_crear la resetea a 'procesando' reusando la
+  -- misma fila, sin cambiar creado_en) necesita subir al tope de la lista
+  -- cuando termina de reprocesarse -- si no, el analista la manda a analizar
+  -- de nuevo y parece que "no pasó nada" porque el resultado queda enterrado
+  -- debajo de fuentes creadas más tarde pero sin ninguna actividad reciente.
+  ORDER BY COALESCE(f.procesado_en, f.creado_en) DESC
+  LIMIT 50;
 END;
 $$;
 
@@ -554,12 +616,15 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION sp_sugerencias_rechazar(p_id uuid)
+CREATE OR REPLACE FUNCTION sp_sugerencias_rechazar(p_id uuid, p_usuario_id uuid DEFAULT NULL)
 RETURNS void
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
 BEGIN
   UPDATE incidentes_sugeridos_ia SET estado = 'rechazado' WHERE id = p_id;
+  IF FOUND THEN
+    PERFORM sp_auditoria_registrar(p_usuario_id, 'sugerencia_rechazada', 'sugerencia', p_id::varchar);
+  END IF;
 END;
 $$;
 
@@ -588,7 +653,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION sp_sugerencias_aprobar_vincular(p_sugerencia_id uuid, p_incidente_id uuid)
+CREATE OR REPLACE FUNCTION sp_sugerencias_aprobar_vincular(p_sugerencia_id uuid, p_incidente_id uuid, p_usuario_id uuid DEFAULT NULL)
 RETURNS void
 SECURITY DEFINER SET search_path = public
 LANGUAGE plpgsql AS $$
@@ -596,6 +661,38 @@ BEGIN
   UPDATE incidentes_sugeridos_ia
     SET estado = 'aprobado', incidente_id = p_incidente_id
     WHERE id = p_sugerencia_id;
+  IF FOUND THEN
+    PERFORM sp_auditoria_registrar(
+      p_usuario_id, 'sugerencia_aprobada', 'sugerencia', p_sugerencia_id::varchar,
+      jsonb_build_object('incidente_id', p_incidente_id)
+    );
+  END IF;
+END;
+$$;
+
+-- Lectura del log de auditoría (GET /api/auditoria, solo administrador --
+-- ver requiere_rol en server/app/auth_dep.py). Trae el nombre del usuario ya
+-- resuelto porque app_runtime no tiene SELECT directo sobre "usuarios".
+CREATE OR REPLACE FUNCTION sp_auditoria_listar(p_limite int DEFAULT 100)
+RETURNS TABLE (
+  id uuid,
+  usuario_id uuid,
+  usuario_nombre varchar,
+  accion varchar,
+  entidad varchar,
+  entidad_id varchar,
+  detalle jsonb,
+  creado_en timestamptz
+)
+SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT a.id, a.usuario_id, u.nombre_completo, a.accion, a.entidad, a.entidad_id, a.detalle, a.creado_en
+  FROM auditoria a
+  LEFT JOIN usuarios u ON u.id = a.usuario_id
+  ORDER BY a.creado_en DESC
+  LIMIT LEAST(p_limite, 500);
 END;
 $$;
 

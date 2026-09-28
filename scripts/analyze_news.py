@@ -1,7 +1,8 @@
 """
-Analiza URLs de noticias para la Cola de Validación IA: descarga el
-artículo, extrae el texto legible, y usa Claude para determinar si
-describe una infracción de pesca real (incidentes_sugeridos_ia).
+Analiza URLs de noticias (o de reportes en PDF, p.ej. de la Marina de Guerra
+del Perú/DICAPI) para la Cola de Validación IA: descarga el documento,
+extrae el texto legible, y usa Claude para determinar si describe una
+infracción de pesca real (incidentes_sugeridos_ia).
 
 El backend Node (POST /api/fuentes/analizar) crea las filas en
 fuentes_noticias y llama a este script como subproceso, pasándole por
@@ -11,7 +12,9 @@ Si no hay ANTHROPIC_API_KEY configurada, o Claude falla para una URL puntual
 (clave inválida, 429, etc.), se usa como alternativa la extracción local por
 reglas + spaCy de extraccion_reglas.py (sin costo ni dependencia de red hacia
 Anthropic, pero con más falsos positivos en notas genéricas -- ver el
-docstring de ese módulo para el detalle de las pruebas hechas).
+docstring de ese módulo para el detalle de las pruebas hechas). Esa
+extracción local trabaja sobre texto plano y no le importa si vino de HTML o
+de un PDF, así que no necesitó ningún cambio para soportar reportes en PDF.
 
 Uso:
     echo '[{"id": "<fuente-uuid>", "url": "https://..."}]' | python scripts/analyze_news.py
@@ -25,8 +28,10 @@ import json
 import os
 import re
 import sys
+from io import BytesIO
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import anthropic
 import psycopg2
@@ -34,6 +39,7 @@ import requests
 import trafilatura
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+from pypdf import PdfReader
 
 import extraccion_reglas
 
@@ -81,17 +87,51 @@ class Extraction(BaseModel):
     confianza: float = Field(description="qué tan seguro estás de es_relevante y tipo_infraccion, entre 0 y 1")
 
 
+def _es_pdf(content_type: str, url: str) -> bool:
+    return "application/pdf" in content_type.lower() or urlparse(url).path.lower().endswith(".pdf")
+
+
+def _extraer_de_pdf(contenido: bytes, url: str) -> tuple[str, str]:
+    """Extrae título + texto de un PDF (p.ej. un reporte de la Marina de
+    Guerra del Perú/DICAPI) leyendo su capa de texto -- NO hace OCR: un PDF
+    escaneado (una foto/imagen del documento sin texto seleccionable) no se
+    puede procesar así, y cae en el ValueError de abajo en vez de en un
+    resultado vacío o inventado."""
+    try:
+        lector = PdfReader(BytesIO(contenido))
+    except Exception as exc:
+        raise ValueError(f"No se pudo leer el PDF de {url}: {exc}") from exc
+
+    texto = _limpiar_texto("\n".join(pagina.extract_text() or "" for pagina in lector.pages).strip())
+    if len(texto) < 200:
+        raise ValueError(
+            f"No se pudo extraer texto útil del PDF {url} "
+            "(probablemente es un documento escaneado sin capa de texto -- este pipeline no hace OCR)"
+        )
+
+    metadata_titulo = lector.metadata.title if lector.metadata else None
+    nombre_archivo = Path(urlparse(url).path).stem.replace("-", " ").replace("_", " ").strip()
+    titulo = metadata_titulo or nombre_archivo or "Reporte PDF"
+    return titulo, texto
+
+
 def fetch_article(url: str) -> tuple[str, str, Optional[str]]:
-    """Descarga y extrae título + texto legible + fecha de publicación del
-    artículo (equivalente a Mozilla Readability). La fecha viene de
-    trafilatura/htmldate (metadata de la página, o inferida de la URL/fechas
-    en el texto); es None si no se pudo determinar -- el incidente cae a
-    now() en ese caso (ver sp_incidentes_registrar_desde_sugerencia)."""
+    """Descarga y extrae título + texto legible + fecha de publicación de la
+    fuente -- un artículo de noticias (HTML, vía trafilatura/Readability) o
+    un reporte en PDF (vía _extraer_de_pdf), detectado por Content-Type o por
+    la extensión de la URL. Los PDF no traen una fecha de publicación
+    equivalente a la metadata de htmldate, así que ese campo siempre es None
+    para ellos -- el incidente cae a now() en ese caso (ver
+    sp_incidentes_registrar_desde_sugerencia)."""
     try:
         resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=15)
         resp.raise_for_status()
     except requests.RequestException as exc:
         raise ValueError(f"No se pudo descargar {url}: {exc}") from exc
+
+    if _es_pdf(resp.headers.get("Content-Type", ""), url):
+        titulo, texto = _extraer_de_pdf(resp.content, url)
+        return titulo, texto, None
 
     extraido = trafilatura.extract(resp.text, url=url, output_format="json", with_metadata=True)
     if not extraido:

@@ -3,7 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, Marker, Polygon, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import * as turf from '@turf/turf'
-import { FilterIcon, LayersIcon, MinusIcon, PlusIcon } from '../../../components/icons'
+import { MinusIcon, PlusIcon } from '../../../components/icons'
 import { apiFetch } from '../../../lib/api'
 import { LAMBAYEQUE_COASTLINE } from '../data/lambayequeCoastline'
 import { PUERTOS_OFICIALES } from '../data/puertosOficiales'
@@ -96,27 +96,12 @@ const puertoOficialIcon = L.divIcon({
   iconAnchor: [11, 11],
 })
 
-interface MapControlButtonProps {
-  children: ReactNode
-  label: string
-}
-
-function MapControlButton({ children, label }: MapControlButtonProps) {
-  return (
-    <button
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50"
-    >
-      {children}
-    </button>
-  )
-}
-
 function ZoomControls() {
   const map = useMap()
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <button
+        type="button"
         aria-label="Acercar"
         onClick={() => map.zoomIn()}
         className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-slate-50"
@@ -125,6 +110,7 @@ function ZoomControls() {
       </button>
       <div className="h-px bg-slate-200" />
       <button
+        type="button"
         aria-label="Alejar"
         onClick={() => map.zoomOut()}
         className="flex h-9 w-9 items-center justify-center text-slate-600 hover:bg-slate-50"
@@ -401,12 +387,6 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
 
         <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
           <ZoomControls />
-          <MapControlButton label="Capas">
-            <LayersIcon className="h-4 w-4" />
-          </MapControlButton>
-          <MapControlButton label="Filtros">
-            <FilterIcon className="h-4 w-4" />
-          </MapControlButton>
         </div>
 
         <div className="absolute bottom-4 left-4 z-[1000] rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
