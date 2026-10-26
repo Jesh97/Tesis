@@ -30,6 +30,9 @@ Escenarios (N_POR_ESCENARIO barcos cada uno, con variación aleatoria):
                 reaparece (último día) a 20-80 km pescando. Esperado: apagon_ais.
   cruce_zee     Potero chino al borde de las 200 mn, apaga el AIS 10-25 días y
                 reaparece dentro de la ZEE (150-180 mn). Esperado: apagon_ais.
+  apagado_frontera  Potero chino operando a 185-215 mn que apaga el AIS los
+                últimos 3-20 días y todavía no reaparece. Esperado: alerta de
+                apagado junto a las 200 mn (regla, ver deteccion.py).
   demora        Potero chino 60+ días seguidos en el mar a 120-190 mn, sin
                 volver nunca a puerto. Esperado: demora_puerto.
 
@@ -75,6 +78,7 @@ ESPERADO = {
     "zona_5mn_chimbote": "zona_protegida",
     "apagon": "apagon_ais",
     "cruce_zee": "apagon_ais",
+    "apagado_frontera": "apagado_frontera",
     "demora": "demora_puerto",
 }
 
@@ -214,6 +218,12 @@ class Simulador:
         self.registrar_dia(barco, DIAS - 1, a_millas_de_la_costa_peruana(self.rng.uniform(-7.1, -6.2), self.rng.uniform(150, 180)),
                            self.rng.randint(2, 4), self.rng.uniform(4, 10), self.rng.uniform(0.6, 0.9))
 
+    def apagado_frontera(self, barco: dict):
+        fin_transmision = DIAS - 1 - self.rng.randint(3, 20)
+        for dia in range(max(0, fin_transmision - self.rng.randint(15, 30)), fin_transmision + 1):
+            self.registrar_dia(barco, dia, a_millas_de_la_costa_peruana(self.rng.uniform(-7.1, -6.2), self.rng.uniform(185, 215)),
+                               self.rng.randint(3, 10), self.rng.uniform(20, 24), self.rng.uniform(0.2, 0.5))
+
     def demora(self, barco: dict):
         lat = self.rng.uniform(-7.1, -6.2)
         millas = self.rng.uniform(120, 190)
@@ -235,6 +245,7 @@ class Simulador:
             self.apagon(self.nuevo_barco("apagon", i, "PER", "76"))
             self.cruce_zee(self.nuevo_barco("cruce_zee", i, "CHN", "41"))
             self.demora(self.nuevo_barco("demora", i, "CHN", "41"))
+            self.apagado_frontera(self.nuevo_barco("apagado_frontera", i, "CHN", "41"))
 
 
 # Patrón -> (campo de la alerta final en deteccion.evaluar_actividad,
@@ -244,6 +255,7 @@ ALERTA_POR_PATRON = {
     "islas": ("islasProtegidas", None),
     "apagon_ais": ("apagonAis", "apagon_ais"),
     "demora_puerto": ("demoraPuerto", "demora_puerto"),
+    "apagado_frontera": ("apagadoEnFronteraZee", None),
 }
 
 
@@ -256,7 +268,7 @@ def evaluar(datos: dict):
 
     print(f"\n{'escenario':<18}{'esperado':<16}" + "".join(f"{p:>18}" for p in ALERTA_POR_PATRON))
     print(f"{'':<34}" + "".join(f"{'modelo -> final':>18}" for _ in ALERTA_POR_PATRON))
-    print("-" * 106)
+    print("-" * 124)
     for escenario, esperado in ESPERADO.items():
         barcos = [m for m, e in escenarios.items() if e == escenario and m in por_mmsi]
         celdas = []

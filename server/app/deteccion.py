@@ -45,8 +45,11 @@ def evaluar_actividad(mmsi: str, datos: dict) -> dict | None:
     demora_detectada = demora["detectado"] or demora_por_regla
     reserva_detectada = reserva_por_regla or zona["detectado"]
     islas_detectada = datos["dias_pescando_cerca_islas"] >= UMBRAL_DIAS_EN_RESERVA
+    # Solo regla: el modelo de apagón mira el hueco ANTES del último registro,
+    # y acá el barco todavía no reapareció.
+    apagado_en_frontera = datos["apagado_en_frontera_zee"]
 
-    if not (apagon["detectado"] or demora_detectada or reserva_detectada or islas_detectada):
+    if not (apagon["detectado"] or demora_detectada or reserva_detectada or islas_detectada or apagado_en_frontera):
         return None
 
     # Combina el apagón de AIS ya detectado por el modelo entrenado con la
@@ -107,5 +110,15 @@ def evaluar_actividad(mmsi: str, datos: dict) -> dict | None:
                 "probabilidad": apagon["probabilidad"],
             }
             if cruce_frontera else None
+        ),
+        # Flota de altura que sigue sin transmitir desde su última posición
+        # junto al límite de las 200mn (features.BANDERAS_FLOTA_ALTURA).
+        "apagadoEnFronteraZee": (
+            {
+                "detectado": True,
+                "diasApagado": datos["dias_apagado"],
+                "distCostaNm": round(datos["dist_costa_actual_nm"], 1),
+            }
+            if apagado_en_frontera else None
         ),
     }

@@ -23,6 +23,10 @@ export interface ActividadSospechosa {
     diasSinSenal: number
     probabilidad: number
   } | null
+  /** Barco de la flota de altura (bandera china) que apagó el AIS junto al
+   * límite de las 200 mn y todavía no reapareció. lat/lon es su última
+   * posición conocida. */
+  apagadoEnFronteraZee: { detectado: true; diasApagado: number; distCostaNm: number } | null
 }
 
 export interface ZonaConActividad {

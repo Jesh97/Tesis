@@ -167,9 +167,10 @@ def iniciar_precarga_periodica(nombre: str, tarea: Callable[[], None], intervalo
 
 
 def _features_zona_con_cache(desde: str, hasta: str, clave_extra: str, geojson: dict) -> dict[str, dict]:
-    # v2: agrega las señales de regla (dias_sin_puerto, dias_pescando_en_reserva):
+    # v3: agrega las señales de regla (dias_sin_puerto, dias_pescando_en_reserva,
+    # apagado_en_frontera_zee):
     # una entrada en disco con el formato anterior no debe leerse.
-    clave = f"features:v2|{clave_extra}|{desde}|{hasta}"
+    clave = f"features:v3|{clave_extra}|{desde}|{hasta}"
 
     def ejecutar() -> dict[str, dict]:
         # Presencia y esfuerzo son consultas independientes a GFW (~10-15s

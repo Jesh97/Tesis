@@ -269,3 +269,33 @@ def test_un_hueco_de_senal_corta_la_racha_sin_puerto():
     datos = construir_features_flota(presencia, [])["777000006"]
     assert datos["dias_sin_puerto"] == 4  # del 1 al 5 de febrero
     assert datos["sin_puerto_en_ventana"] is True
+
+
+# ---------------------------------------------------------------------------
+# Apagón en curso junto a las 200mn
+# ---------------------------------------------------------------------------
+
+FRONTERA_ZEE_LAT, FRONTERA_ZEE_LON = -6.6, -84.4  # ~200mn de la costa de Lambayeque
+
+
+def _flota_con_apagado(flag: str, dias_apagado: int) -> dict:
+    """Barco que transmite 6 días junto a las 200mn y se apaga; otro barco
+    sigue transmitiendo hasta el final (marca el último día con datos)."""
+    fechas = [f"2024-01-{d:02d}" for d in range(1, 21)]
+    ultimo = len(fechas) - 1 - dias_apagado
+    presencia = [_registro("412000001", f, FRONTERA_ZEE_LAT, FRONTERA_ZEE_LON, flag=flag) for f in fechas[ultimo - 5:ultimo + 1]]
+    presencia += [_registro("111111111", f) for f in fechas]
+    return construir_features_flota(presencia, [])["412000001"]
+
+
+def test_barco_chino_apagado_junto_a_las_200mn():
+    datos = _flota_con_apagado("CHN", dias_apagado=5)
+    assert abs(datos["dist_costa_actual_nm"] - ZEE_NM) < 5
+    assert datos["dias_apagado"] == 5
+    assert datos["apagado_en_frontera_zee"] is True
+
+
+def test_apagado_en_frontera_no_alerta_si_sigue_transmitiendo_o_no_es_chino():
+    assert _flota_con_apagado("CHN", dias_apagado=0)["apagado_en_frontera_zee"] is False
+    assert _flota_con_apagado("CHN", dias_apagado=2)["apagado_en_frontera_zee"] is False
+    assert _flota_con_apagado("PER", dias_apagado=5)["apagado_en_frontera_zee"] is False

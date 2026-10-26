@@ -133,6 +133,15 @@ UMBRAL_ZONA_NO_AUTORIZADA_NM = 10.0
 # subestimar cuánto se acercó al límite real.
 MARGEN_FRONTERA_ZEE_NM = 20.0
 
+# Apagón EN CURSO junto a las 200mn: la flota de altura (sobre todo poteros
+# chinos) apaga el AIS al borde de la ZEE para entrar a pescar. A diferencia
+# de cruce_frontera_zee_tras_hueco no espera a que reaparezca: avisa
+# mientras sigue apagada. Se mide contra el último día con datos de TODA la
+# flota (no contra "hoy"), así el retraso con que GFW publica los datos no
+# cuenta como días sin señal.
+BANDERAS_FLOTA_ALTURA = {"CHN"}
+UMBRAL_DIAS_APAGADO_FRONTERA = 3
+
 
 def haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     r_nm = 3440.065
@@ -287,6 +296,8 @@ def construir_features_flota(
     fishing_horas_celda_max_por_dia = {
         fecha: max(horas, default=0.0) for fecha, horas in fishing_horas_por_dia.items()
     }
+
+    ultima_fecha_flota = datetime.strptime(max(fecha for _mmsi, fecha in presencia_por_dia), "%Y-%m-%d").date()
 
     resultado: dict[str, dict] = {}
 
@@ -450,6 +461,15 @@ def construir_features_flota(
             and dist_costa <= ZEE_NM
         )
 
+        # Días desde su último registro hasta el último día con datos de la
+        # flota: > 0 significa que sigue sin transmitir.
+        dias_apagado = (ultima_fecha_flota - datetime.strptime(fecha_actual, "%Y-%m-%d").date()).days
+        apagado_en_frontera = (
+            (fila_actual.get("flag") or "").upper() in BANDERAS_FLOTA_ALTURA
+            and abs(dist_costa - ZEE_NM) <= MARGEN_FRONTERA_ZEE_NM
+            and dias_apagado >= UMBRAL_DIAS_APAGADO_FRONTERA
+        )
+
         resultado[mmsi] = {
             "features": features,
             "nombre": fila_actual.get("shipName") or "Desconocido",
@@ -466,6 +486,8 @@ def construir_features_flota(
             "dist_costa_actual_nm": dist_costa,
             "dist_costa_anterior_nm": dist_costa_anterior,
             "cruce_frontera_zee_tras_hueco": cruce_frontera_zee,
+            "dias_apagado": dias_apagado,
+            "apagado_en_frontera_zee": apagado_en_frontera,
         }
 
     return resultado

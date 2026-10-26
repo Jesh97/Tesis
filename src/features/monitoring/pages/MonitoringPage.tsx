@@ -72,6 +72,12 @@ export function MonitoringPage() {
     const deActividad = zonasActividad.flatMap((zona) =>
       zona.barcos.map((barco) => {
         const motivos: string[] = []
+        if (barco.apagadoEnFronteraZee) {
+          const { diasApagado, distCostaNm } = barco.apagadoEnFronteraZee
+          motivos.push(
+            `apagó la señal AIS hace ${diasApagado} días a ${distCostaNm}mn de costa, junto al límite de las 200mn, y todavía no reaparece${barco.flag ? ` (bandera: ${barco.flag})` : ''}`,
+          )
+        }
         if (barco.cruceFronteraZee) {
           motivos.push(
             `apagó la señal AIS a ${barco.cruceFronteraZee.distCostaAntesNm}mn de costa (cerca del límite de las 200mn) y reapareció ${barco.cruceFronteraZee.diasSinSenal} días después a ${barco.cruceFronteraZee.distCostaAhoraNm}mn, ya dentro de la ZEE peruana${barco.flag ? ` (bandera: ${barco.flag})` : ''}`,
@@ -103,7 +109,7 @@ export function MonitoringPage() {
         }
         const tipoAlerta: TipoAlerta = barco.cruceFronteraZee
           ? 'cruce_frontera_zee'
-          : barco.apagonAis
+          : barco.apagonAis || barco.apagadoEnFronteraZee
             ? 'apagon_ais'
             : barco.reservaArtesanal || barco.islasProtegidas
               ? 'zona_protegida'
