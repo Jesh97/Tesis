@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from datetime import date
+
+from fastapi import APIRouter, Query
 
 from ..db import ejecutar_sp, get_cursor
 
@@ -20,6 +22,17 @@ def resumen():
 def incidentes_por_mes():
     with get_cursor() as cur:
         ejecutar_sp(cur, "SELECT * FROM sp_reportes_incidentes_por_mes()")
+        return cur.fetchall()
+
+
+# Vista "Tendencias" (TrendsPage.tsx): incidentes por mes en un rango
+# arbitrario de meses, para compararlos con la actividad de GFW de
+# /api/actividad/mensual. A diferencia de /incidentes-por-mes (fijo en los
+# últimos 12 meses), acá "desde"/"hasta" son el primer día de cada mes.
+@router.get("/incidentes-por-mes-rango")
+def incidentes_por_mes_rango(desde: date = Query(...), hasta: date = Query(...)):
+    with get_cursor() as cur:
+        ejecutar_sp(cur, "SELECT * FROM sp_reportes_incidentes_por_mes_rango(%s, %s)", (desde, hasta))
         return cur.fetchall()
 
 

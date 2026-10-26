@@ -38,3 +38,6 @@ datos/
 *.njsproj
 *.sln
 *.sw?
+
+# Flota inventada por scripts/simular_irregularidades.py (18MB, se regenera igual con la misma semilla)
+scripts/simulacion_irregularidades.json

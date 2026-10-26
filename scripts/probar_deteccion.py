@@ -12,25 +12,24 @@ referencia en algunos escenarios, para que los z-score de la flota tengan
 varianza real) pensadas para poner a prueba cada detector:
 
   - 412000001 "PATRIMONIO DEL MAR": control, comportamiento normal (cerca de
-    puerto, sin huecos) -- referencia para comparar contra los otros 3.
+    puerto, sin huecos). Al estar pegado a Bayóvar también roza el umbral
+    de "zona_protegida" (~0.57).
   - 412000002 "DRAGON DEL PACIFICO": transmite 10 días con pesca normal,
     desaparece 22 días y reaparece a 10km con el patrón de pesca roto --
-    SÍ cruza el umbral de "apagon_ais" (prob. ~0.73 > umbral ~0.72).
+    cruza el umbral de "apagon_ais" (prob. ~0.86 > umbral ~0.70).
   - 412000003 "LONG SPRING 88": 90 días seguidos a más de 500nm de cualquier
-    puerto/costa peruana (se acerca al umbral de "demora_puerto" sin cruzarlo).
+    puerto/costa peruana. NO cruza "demora_puerto": el modelo aprendió
+    dias_activos_acumulados contando desde 2012, y aquí solo hay 90 días.
   - 412000004 "CALETA NORTE": posicionada sobre la reserva artesanal de 5mn
-    (frente a Chimbote) durante 5 días (se acerca al umbral de
-    "zona_protegida" sin cruzarlo).
+    (frente a Chimbote) durante 5 días -- cruza "zona_protegida" (~0.76).
 
-IMPORTANTE: el modelo se entrenó con 13 años de datos históricos de SISESAT
-(ver docstring de app/features.py); un escenario sintético puede acercarse
-mucho al umbral de un detector sin llegar a cruzarlo -- eso no es un bug de
-este script, es la misma limitación de distribución que ya documenta
-features.py para los datos reconstruidos en vivo. "DRAGON DEL PACIFICO" se
-ajustó (por búsqueda) hasta cruzar el umbral de "apagon_ais" para demostrar
-una alerta real de punta a punta; los otros dos quedan como ejemplo de
-señal elevada pero no positiva, que también es un resultado válido del
-modelo.
+Hasta que modelo.predecir aplicó el escalado de entrenamiento (ver
+modelo.ESCALADO), ninguno de estos escenarios -- ni ningún caso real --
+cruzaba los umbrales en vivo.
+
+Para una prueba con casos reales etiquetados ver
+scripts/probar_modelo_casos_reales.py, y para validar el camino en vivo
+contra el dataset de entrenamiento, scripts/validar_escalado.py.
 """
 import json
 import sys

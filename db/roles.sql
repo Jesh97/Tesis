@@ -73,6 +73,7 @@ GRANT EXECUTE ON FUNCTION
   sp_fuentes_marcar_estado(uuid, estado_fuente),
   sp_reportes_resumen(),
   sp_reportes_incidentes_por_mes(),
+  sp_reportes_incidentes_por_mes_rango(date, date),
   sp_reportes_tipos_infraccion(),
   sp_reportes_zonas_top(),
   -- sp_auditoria_registrar (procedures.sql) NO se otorga a propósito: solo

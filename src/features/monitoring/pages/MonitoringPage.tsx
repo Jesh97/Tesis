@@ -81,16 +81,33 @@ export function MonitoringPage() {
             `sin señal AIS por ${barco.apagonAis.diasSinSenal} días (top 10% de la flota de "${zona.zonaNombre}")`,
           )
         }
-        if (barco.demoraPuerto) {
+        if (barco.reservaArtesanal) {
+          const { diasPescando, distCostaMinNm } = barco.reservaArtesanal
           motivos.push(
-            `${barco.demoraPuerto.diasLejosDePuerto} días seguidos lejos de puerto (top 10% de la flota)`,
+            diasPescando > 0
+              ? `pescó ${diasPescando} ${diasPescando === 1 ? 'día' : 'días'} dentro de las 5 millas reservadas a la pesca artesanal${distCostaMinNm !== null ? ` (a ${distCostaMinNm}mn de la costa)` : ''}`
+              : 'patrón de operación compatible con la reserva artesanal de 5 millas (modelo entrenado)',
+          )
+        }
+        if (barco.islasProtegidas) {
+          const { diasPescando, distIslaMinNm } = barco.islasProtegidas
+          motivos.push(
+            `pescó ${diasPescando} ${diasPescando === 1 ? 'día' : 'días'} junto a las islas Lobos (Reserva Nacional, a ${distIslaMinNm}mn)`,
+          )
+        }
+        if (barco.demoraPuerto) {
+          const { diasLejosDePuerto, alMenos } = barco.demoraPuerto
+          motivos.push(
+            `${alMenos ? 'al menos ' : ''}${diasLejosDePuerto} días seguidos sin tocar puerto ni desembarcadero`,
           )
         }
         const tipoAlerta: TipoAlerta = barco.cruceFronteraZee
           ? 'cruce_frontera_zee'
           : barco.apagonAis
             ? 'apagon_ais'
-            : 'demora_puerto'
+            : barco.reservaArtesanal || barco.islasProtegidas
+              ? 'zona_protegida'
+              : 'demora_puerto'
         return {
           key: `actividad:${zona.zonaId}:${barco.mmsi}`,
           tipoAlerta,

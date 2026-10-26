@@ -23,7 +23,9 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 from datetime import datetime
-from statistics import mean, pstdev
+from statistics import mean, pstdev, stdev
+
+from .costa_lambayeque import COSTA_LAMBAYEQUE, ISLAS_LAMBAYEQUE
 
 # Puertos pesqueros peruanos con coordenadas conocidas. El modelo espera 3
 # columnas de puerto adicionales para las que
@@ -61,6 +63,41 @@ COSTA_PERU = [
     (-75.16, -15.35), (-75.24, -15.27), (-72.10, -17.00), (-71.34, -17.65),
     (-70.37, -18.35),
 ]
+
+# Radio alrededor de las islas Lobos de Tierra / Lobos de Afuera (Reserva
+# Nacional Sistema de Islas, Islotes y Puntas Guaneras) dentro del cual se
+# alerta pesca. La reserva artesanal de 5 mn se mide desde la costa
+# CONTINENTAL; las islas tienen su propia regulación (SERNANP) -- este radio
+# es un parámetro a confirmar con la norma vigente, no un dato legal.
+RADIO_ISLAS_PROTEGIDAS_NM = 5.0
+
+# Lugares donde una embarcación "pasa por puerto" (regla de demora en
+# puerto): los 13 puertos oficiales más los desembarcaderos de Lambayeque,
+# que no son puertos oficiales pero sí donde descarga la flota local -- sin
+# ellos un cerquero de San José que vuelve cada 3 días contaría como si
+# nunca tocara puerto. Solo para esta regla: el one-hot del modelo sigue
+# usando PUERTOS_PERU (las columnas con las que se entrenó).
+DESEMBARCADEROS = PUERTOS_PERU + [
+    ("PUERTO ETEN", -6.93, -79.86),
+    ("SANTA ROSA", -6.88, -79.92),
+    ("PIMENTEL", -6.84, -79.94),
+    ("SAN JOSE", -6.77, -79.97),
+]
+RADIO_EN_PUERTO_NM = 5.0
+# Regla de reserva de 5 mn: horas mínimas de pesca aparente en el día dentro
+# de la reserva (descarta ruido del modelo de pesca de GFW en celdas sueltas).
+MIN_HORAS_PESCA_EN_RESERVA = 1.0
+# ...y radio alrededor de cada muelle que NO cuenta como reserva (maniobras
+# de entrada/salida). Mucho menor que RADIO_EN_PUERTO_NM: los desembarcaderos
+# de Lambayeque están a pocas millas entre sí, y con 5 mn quedaba excluida
+# casi toda la reserva de la costa central (verificado con
+# scripts/simular_irregularidades.py).
+RADIO_MUELLE_NM = 1.5
+# Regla de días sin puerto: un hueco de señal más largo que esto corta la
+# racha -- mientras el AIS estuvo apagado no se sabe si tocó puerto (eso ya
+# lo cubre la alerta de apagón), así que se vuelve a contar desde que
+# reaparece.
+MAX_HUECO_DIAS_SIN_PUERTO = 3
 
 PAISES_ONEHOT = ["CHL", "CHN", "COL", "ECU", "ESP", "HND", "JPN", "KOR", "PAN", "PER", "TWN"]
 
@@ -110,8 +147,53 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return haversine_nm(lat1, lon1, lat2, lon2) * 1.852
 
 
+def _distancia_segmento_nm(lat: float, lon: float, a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Distancia de un punto al segmento a-b ((lat, lon)), en una proyección
+    local plana -- error despreciable para segmentos de pocas millas."""
+    escala_lon = 60 * math.cos(math.radians(lat))
+    px, py = lon * escala_lon, lat * 60
+    ax, ay = a[1] * escala_lon, a[0] * 60
+    bx, by = b[1] * escala_lon, b[0] * 60
+    dx, dy = bx - ax, by - ay
+    largo2 = dx * dx + dy * dy
+    t = 0.0 if largo2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / largo2))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def _distancia_linea_nm(lat: float, lon: float, linea: list[tuple[float, float]]) -> float:
+    return min(_distancia_segmento_nm(lat, lon, a, b) for a, b in zip(linea, linea[1:]))
+
+
+def _distancia_costa_continental_nm(lat: float, lon: float) -> float:
+    """Distancia a la costa continental: el mínimo entre los vértices
+    aproximados de COSTA_PERU y la costa real de Lambayeque. Es desde donde
+    se mide la reserva artesanal de 5 mn."""
+    vertices = min(haversine_nm(lat, lon, plat, plon) for plon, plat in COSTA_PERU)
+    return min(vertices, _distancia_linea_nm(lat, lon, COSTA_LAMBAYEQUE))
+
+
+def _distancia_islas_nm(lat: float, lon: float) -> float:
+    return min(_distancia_linea_nm(lat, lon, isla) for isla in ISLAS_LAMBAYEQUE.values())
+
+
 def _distancia_costa_nm(lat: float, lon: float) -> float:
-    return min(haversine_nm(lat, lon, plat, plon) for plon, plat in COSTA_PERU)
+    """Distancia a la costa más cercana, islas incluidas: es la definición
+    de dist_costa_min_nm del dataset de entrenamiento (ahí casi todos los
+    casos de "reserva 5 mn" de Lambayeque están junto a las islas Lobos), y
+    la que se le pasa al modelo. Para la regla legal de la reserva ver
+    _distancia_costa_continental_nm."""
+    return min(_distancia_costa_continental_nm(lat, lon), _distancia_islas_nm(lat, lon))
+
+
+def _en_puerto(celda: dict, radio_nm: float = RADIO_EN_PUERTO_NM) -> bool:
+    return any(
+        haversine_nm(celda["lat"], celda["lon"], plat, plon) <= radio_nm
+        for _nombre, plat, plon in DESEMBARCADEROS
+    )
+
+
+def _paso_por_puerto(celdas: list[dict]) -> bool:
+    return any(_en_puerto(c) for c in celdas)
 
 
 def puerto_mas_cercano(lat: float, lon: float) -> tuple[str, float]:
@@ -128,9 +210,13 @@ def _flags_zona(dist_costa_nm: float) -> tuple[float, float, float]:
 
 
 def _zscore(valor: float, valores: list[float]) -> float:
+    """z-score de `valor` contra el HISTORIAL DE LA PROPIA embarcación
+    (desviación muestral, ddof=1): es la definición de z_*_dia en el dataset
+    de entrenamiento, verificada fila a fila contra los datos crudos (R² =
+    1.0) en scripts/recuperar_escalado.py -- no contra la flota del día."""
     if len(valores) < 2:
         return 0.0
-    m, s = mean(valores), pstdev(valores)
+    m, s = mean(valores), stdev(valores)
     return (valor - m) / s if s > 0 else 0.0
 
 
@@ -184,15 +270,11 @@ def construir_features_flota(
     if not candidatos:
         return {}
 
-    horas_por_dia: dict[str, list[float]] = defaultdict(list)
-    celdas_por_dia: dict[str, list[float]] = defaultdict(list)
     fishing_horas_por_dia: dict[str, list[float]] = defaultdict(list)
     vecinos_por_celda_dia: dict[tuple[str, float, float], set[str]] = defaultdict(set)
     posiciones_por_dia: dict[str, list[tuple[str, float, float, str | None]]] = defaultdict(list)
 
     for (mmsi, fecha), resumen in presencia_por_dia.items():
-        horas_por_dia[fecha].append(resumen["horas"])
-        celdas_por_dia[fecha].append(len(resumen["celdas"]))
         lat, lon = _posicion_representativa(resumen["celdas"])
         posiciones_por_dia[fecha].append((mmsi, lat, lon, resumen.get("flag")))
         for c in resumen["celdas"]:
@@ -243,11 +325,13 @@ def construir_features_flota(
             distancias = [haversine_km(lat, lon, c["lat"], c["lon"]) for c in fila_actual["celdas"]]
             disp_celdas_km = pstdev(distancias) if len(distancias) > 1 else 0.0
 
-        vecinos_totales: set[str] = set()
+        # Máximo, entre las celdas que visitó ese día, de otros barcos en la
+        # misma celda (no la unión de todas sus celdas): así está definido
+        # en el dataset de entrenamiento.
+        n_vecinos_celda_max = 0
         for c in fila_actual["celdas"]:
             clave_celda = (fecha_actual, round(c["lat"], 2), round(c["lon"], 2))
-            vecinos_totales |= vecinos_por_celda_dia.get(clave_celda, set())
-        vecinos_totales.discard(mmsi)
+            n_vecinos_celda_max = max(n_vecinos_celda_max, len(vecinos_por_celda_dia.get(clave_celda, set()) - {mmsi}))
 
         bandera_actual = (fila_actual.get("flag") or "").upper()
         vecinos_distinto_pais = 0
@@ -261,9 +345,13 @@ def construir_features_flota(
                     vecinos_distinto_pais += 1
 
         gap_log = math.log1p(dias_desde_ultimo_registro)
-        z_hours_dia = _zscore(horas_dia, horas_por_dia.get(fecha_actual, []))
-        z_fishing_hours_dia = _zscore(fishing_hours_dia, fishing_horas_por_dia.get(fecha_actual, []))
-        z_n_celdas_dia = _zscore(n_celdas_dia, celdas_por_dia.get(fecha_actual, []))
+        pesca_por_fila = [
+            esfuerzo_por_dia[(mmsi, f["date"])]["horas"] if (mmsi, f["date"]) in esfuerzo_por_dia else 0.0
+            for f in filas
+        ]
+        z_hours_dia = _zscore(horas_dia, [f["horas"] for f in filas])
+        z_fishing_hours_dia = _zscore(fishing_hours_dia, pesca_por_fila)
+        z_n_celdas_dia = _zscore(n_celdas_dia, [len(f["celdas"]) for f in filas])
 
         features: dict[str, float] = {
             "hours_dia": horas_dia,
@@ -280,7 +368,7 @@ def construir_features_flota(
             "disp_celdas_km": disp_celdas_km,
             "desplazamiento_km": desplazamiento_km,
             "velocidad_implicita_kt": velocidad_implicita_kt,
-            "n_vecinos_celda_max_dia": float(len(vecinos_totales)),
+            "n_vecinos_celda_max_dia": float(n_vecinos_celda_max),
             "n_vecinos_pais_distinto_max_dia": float(vecinos_distinto_pais),
             "cluster_tamano_dia": float(cluster_tamano_dia),
             "z_hours_dia": z_hours_dia,
@@ -305,17 +393,48 @@ def construir_features_flota(
         clave_puerto = puerto_nombre if puerto_nombre in PUERTOS_ONEHOT else "OTRO"
         features[f"puerto_mas_cercano_{clave_puerto}"] = 1.0
 
-        # Métricas descriptivas para el frontend (no todas se le pasan al
-        # modelo, pero sirven para explicar la alerta en la UI).
-        racha_lejos_de_puerto = 0
-        racha_actual = 0
+        # Señales de REGLA (no se le pasan al modelo; ver deteccion.py):
+        #
+        # dias_sin_puerto: días corridos, VIÉNDOLO con AIS, desde la última
+        # vez que alguna celda del barco cayó a <= RADIO_EN_PUERTO_NM de un
+        # puerto o desembarcadero hasta su último registro. La racha arranca
+        # de nuevo tras un hueco de señal > MAX_HUECO_DIAS_SIN_PUERTO. Si en
+        # la racha nunca se lo vio en puerto (empezó al inicio de la ventana
+        # o tras un hueco), sin_puerto_en_ventana lo marca: es un mínimo.
+        fechas = [datetime.strptime(f["date"], "%Y-%m-%d").date() for f in filas]
+        inicio_racha, inicio_en_puerto = fechas[0], _paso_por_puerto(filas[0]["celdas"])
+        for i in range(1, len(filas)):
+            if _paso_por_puerto(filas[i]["celdas"]):
+                inicio_racha, inicio_en_puerto = fechas[i], True
+            elif (fechas[i] - fechas[i - 1]).days > MAX_HUECO_DIAS_SIN_PUERTO:
+                inicio_racha, inicio_en_puerto = fechas[i], False
+        dias_sin_puerto = (fechas[-1] - inicio_racha).days
+
+        # Días con al menos MIN_HORAS_PESCA_EN_RESERVA de pesca aparente
+        # (dataset de esfuerzo) en celdas dentro de un área protegida:
+        #   - dias_pescando_en_reserva: a <= 5 mn de la costa continental, la
+        #     reserva artesanal (D.L. 25977 / su reglamento).
+        #   - dias_pescando_cerca_islas: a <= RADIO_ISLAS_PROTEGIDAS_NM de las
+        #     islas Lobos (RNSIIPG).
+        # No cuentan las celdas a <= RADIO_MUELLE_NM de un muelle: maniobrar
+        # en el puerto no es pescar en la reserva.
+        dias_pescando_en_reserva, dist_min_reserva = 0, None
+        dias_pescando_cerca_islas, dist_min_islas = 0, None
         for f in filas:
-            flat, flon = _posicion_representativa(f["celdas"])
-            if puerto_mas_cercano(flat, flon)[1] > 5.0:
-                racha_actual += 1
-                racha_lejos_de_puerto = max(racha_lejos_de_puerto, racha_actual)
-            else:
-                racha_actual = 0
+            pesca = esfuerzo_por_dia.get((mmsi, f["date"]))
+            if not pesca:
+                continue
+            celdas_pesca = [c for c in pesca["celdas"] if c["horas"] > 0 and not _en_puerto(c, RADIO_MUELLE_NM)]
+            en_reserva = [(c["horas"], d) for c in celdas_pesca
+                          if (d := _distancia_costa_continental_nm(c["lat"], c["lon"])) <= RESERVA_ARTESANAL_NM]
+            cerca_islas = [(c["horas"], d) for c in celdas_pesca
+                           if (d := _distancia_islas_nm(c["lat"], c["lon"])) <= RADIO_ISLAS_PROTEGIDAS_NM]
+            if sum(h for h, _ in en_reserva) >= MIN_HORAS_PESCA_EN_RESERVA:
+                dias_pescando_en_reserva += 1
+                dist_min_reserva = min([d for _, d in en_reserva] + ([dist_min_reserva] if dist_min_reserva is not None else []))
+            if sum(h for h, _ in cerca_islas) >= MIN_HORAS_PESCA_EN_RESERVA:
+                dias_pescando_cerca_islas += 1
+                dist_min_islas = min([d for _, d in cerca_islas] + ([dist_min_islas] if dist_min_islas is not None else []))
 
         # Señal descriptiva (no se le pasa al modelo, igual que
         # dias_lejos_de_puerto): compara la posición ANTES del hueco de señal
@@ -338,7 +457,12 @@ def construir_features_flota(
             "lat": lat,
             "lon": lon,
             "dias_sin_senal": dias_desde_ultimo_registro,
-            "dias_lejos_de_puerto": racha_lejos_de_puerto,
+            "dias_sin_puerto": dias_sin_puerto,
+            "sin_puerto_en_ventana": not inicio_en_puerto,
+            "dias_pescando_en_reserva": dias_pescando_en_reserva,
+            "dist_min_reserva_nm": dist_min_reserva,
+            "dias_pescando_cerca_islas": dias_pescando_cerca_islas,
+            "dist_min_islas_nm": dist_min_islas,
             "dist_costa_actual_nm": dist_costa,
             "dist_costa_anterior_nm": dist_costa_anterior,
             "cruce_frontera_zee_tras_hueco": cruce_frontera_zee,

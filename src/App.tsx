@@ -7,6 +7,8 @@ import { IncidentsPage } from './features/incidents/pages/IncidentsPage'
 import { MonitoringPage } from './features/monitoring/pages/MonitoringPage'
 import { NewsPage } from './features/news/pages/NewsPage'
 import { ReportsPage } from './features/reports/pages/ReportsPage'
+import { HistoricoPage } from './features/trends/pages/HistoricoPage'
+import { TrendsPage } from './features/trends/pages/TrendsPage'
 import { ZonesPage } from './features/zones/pages/ZonesPage'
 import { obtenerSesion } from './lib/session'
 
@@ -32,6 +34,8 @@ function App() {
         <Route path="/incidentes" element={<RequireAuth><IncidentsPage /></RequireAuth>} />
         <Route path="/noticias" element={<RequireAuth><NewsPage /></RequireAuth>} />
         <Route path="/reportes" element={<RequireAuth><ReportsPage /></RequireAuth>} />
+        <Route path="/historico" element={<RequireAuth><HistoricoPage /></RequireAuth>} />
+        <Route path="/tendencias" element={<RequireAuth><TrendsPage /></RequireAuth>} />
         <Route path="/zonas" element={<RequireAuth><ZonesPage /></RequireAuth>} />
         <Route path="/auditoria" element={<RequireAuth><RequireAdmin><AuditLogPage /></RequireAdmin></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -5,6 +5,7 @@ import { ReportarIncidenteModal } from '../../features/incidents/components/Repo
 import { cerrarSesion, obtenerSesion } from '../../lib/session'
 import {
   AlertTriangleIcon,
+  CalendarIcon,
   FileTextIcon,
   HelpCircleIcon,
   HistoryIcon,
@@ -12,6 +13,7 @@ import {
   LogOutIcon,
   MapPinIcon,
   RssIcon,
+  TrendingUpIcon,
 } from '../icons'
 
 interface NavItem {
@@ -22,10 +24,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Monitoreo', to: '/monitoreo', icon: <LayoutGridIcon className="h-4 w-4" /> },
+  { label: 'Histórico', to: '/historico', icon: <CalendarIcon className="h-4 w-4" /> },
   { label: 'Incidentes', to: '/incidentes', icon: <AlertTriangleIcon className="h-4 w-4" /> },
   { label: 'Zonas', to: '/zonas', icon: <MapPinIcon className="h-4 w-4" /> },
   { label: 'Noticias', to: '/noticias', icon: <RssIcon className="h-4 w-4" /> },
   { label: 'Reportes', to: '/reportes', icon: <FileTextIcon className="h-4 w-4" /> },
+  { label: 'Tendencias', to: '/tendencias', icon: <TrendingUpIcon className="h-4 w-4" /> },
 ]
 
 // GET /api/auditoria exige rol "administrador" (server/app/routes/auditoria.py)

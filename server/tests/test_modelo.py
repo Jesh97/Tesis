@@ -19,6 +19,33 @@ requiere_modelo = pytest.mark.skipif(
 )
 
 
+def test_escalar_lleva_valores_crudos_a_la_escala_de_entrenamiento():
+    # Las constantes de lat/lon son las del scaler original (las mismas que
+    # usa scripts/cargar_incidentes_csv.py para revertirlo).
+    media_lat, escala_lat = modelo.ESCALADO["lat_media"]
+    assert media_lat == pytest.approx(-13.555222) and escala_lat == pytest.approx(3.969597)
+
+    crudo = {"lat_media": -6.8, "hours_dia": 22.108263, "pais_inferido_PER": 1.0, "zona_dia_reserva_artesanal_5mn": 1.0}
+    escalado = modelo.escalar(crudo)
+
+    assert escalado["lat_media"] == pytest.approx((-6.8 - media_lat) / escala_lat)
+    assert escalado["hours_dia"] == pytest.approx(0.0)  # la media cruda -> 0
+    # one-hot / flags binarios no se escalaron en prepare_data.py
+    assert escalado["pais_inferido_PER"] == 1.0
+    assert escalado["zona_dia_reserva_artesanal_5mn"] == 1.0
+    # columnas sin dato en vivo -> valor típico de train, ya escalado
+    assert escalado["es_transbordo_no_autorizado"] == modelo.VALOR_FIJO_ESCALADO["es_transbordo_no_autorizado"]
+    # no modifica el diccionario de entrada
+    assert crudo["lat_media"] == -6.8
+
+
+def test_dist_costa_escalada_cae_en_los_bordes_de_las_zonas_del_csv():
+    # En train.csv el corte de zona_dia_reserva_artesanal_5mn está en
+    # dist_costa estandarizada ~= -1.1085 y el de fuera_zee (200mn) en ~0.1475.
+    assert modelo.escalar({"dist_costa_min_nm": 5.0})["dist_costa_min_nm"] == pytest.approx(-1.1085, abs=1e-3)
+    assert modelo.escalar({"dist_costa_min_nm": 200.0})["dist_costa_min_nm"] == pytest.approx(0.1475, abs=1e-3)
+
+
 @requiere_modelo
 def test_carga_los_tres_detectores_conectados():
     modelos = modelo._cargar()

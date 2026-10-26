@@ -58,7 +58,7 @@ def zona_protegida(desde: str = Query(default=DEMO_DESDE), hasta: str = Query(de
             except Exception as err:
                 return {"zonaId": zona["id"], "zonaNombre": zona["nombre"], "region": zona["region"], "barcos": [], "error": str(err)}
 
-        # Cada zona consulta GFW por su cuenta (~10-20s): procesarlas en
+        # Cada zona consulta GFW por su cuenta (10-20s): procesarlas en
         # paralelo (en vez de una por una) es lo que baja el tiempo total de
         # carga de la página de monitoreo.
         resultados = ejecutar_por_zonas(zonas, procesar)
@@ -67,11 +67,7 @@ def zona_protegida(desde: str = Query(default=DEMO_DESDE), hasta: str = Query(de
         raise HTTPException(status_code=500, detail={"error": str(err)}) from err
 
 
-# Patrones "apagon_ais" y "demora_puerto": calculados con los detectores
-# entrenados en scripts/entrenar_patrones.py (datos/modelos_patrones_v9.joblib),
-# alimentados con features reconstruidas desde presencia AIS + esfuerzo
-# pesquero diario de GFW dentro de las zonas críticas (ver app/features.py
-# para el detalle de qué se pudo y no se pudo reconstruir fielmente).
+
 @router.get("/actividad")
 def actividad(desde: str = Query(default=ACTIVIDAD_DEMO_DESDE), hasta: str = Query(default=ACTIVIDAD_DEMO_HASTA)):
     try:

@@ -1,5 +1,6 @@
 import os
 import threading
+from datetime import date
 import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -16,11 +17,14 @@ from .auth_dep import usuario_actual
 from .gfw import (
     CACHE_TTL_SECONDS,
     consultar_actividad_con_cache,
+    consultar_actividad_mensual_rango,
+    consultar_barcos_mes_con_cache,
     consultar_gfw_con_cache,
     consultar_probabilidad_zona_protegida_con_cache,
     ejecutar_por_zonas,
     iniciar_precarga_periodica,
 )
+from .routes.actividad import rango_por_defecto, router as actividad_router
 from .routes.auditoria import router as auditoria_router
 from .routes.auth import router as auth_router
 from .routes.embarcaciones import router as embarcaciones_router
@@ -74,6 +78,28 @@ def _precargar_una_zona(zona: dict) -> None:
     consultar_actividad_con_cache(ACTIVIDAD_DEMO_DESDE, ACTIVIDAD_DEMO_HASTA, f"zona:{zona['id']}", zona["poligono"])
 
 
+def _precargar_actividad_mensual() -> None:
+    # Los años del rango por defecto de la vista "Tendencias" (ver
+    # rango_por_defecto en routes/actividad.py). Una vez en cache (TTL de
+    # días/horas, ver gfw.py) las vueltas siguientes de este loop no tocan GFW.
+    desde, hasta = rango_por_defecto(date.today())
+    consultar_actividad_mensual_rango(list(range(int(desde[:4]), int(hasta[:4]) + 1)))
+
+
+# Vista "Histórico": los últimos meses cerrados, del más reciente (el que se
+# abre por defecto) hacia atrás. Cada mes fuera de cache son ~20MB de GFW y
+# ~5-10s, así que se precargan solo los más probables de consultarse; el
+# resto se pide bajo demanda al moverse por la línea de tiempo.
+_MESES_HISTORICO_PRECARGA = 12
+
+
+def _precargar_historico() -> None:
+    hoy = date.today()
+    for atras in range(1, _MESES_HISTORICO_PRECARGA + 1):
+        total = hoy.year * 12 + (hoy.month - 1) - atras
+        consultar_barcos_mes_con_cache(total // 12, total % 12 + 1)
+
+
 def _precargar_irregularidades() -> None:
     # Zonas en paralelo (acotado, ver MAX_ZONAS_CONCURRENTES en gfw.py): cada
     # una tarda ~10-20s en GFW, y hacerlas una por una dejaba el cache frío
@@ -89,6 +115,8 @@ async def lifespan(_app: FastAPI):
     threading.Thread(target=modelo.precargar, name="precarga-modelo", daemon=True).start()
     iniciar_precarga_periodica("embarcaciones-lambayeque", _precargar_embarcaciones, _INTERVALO_PRECARGA_SEGUNDOS)
     iniciar_precarga_periodica("irregularidades", _precargar_irregularidades, _INTERVALO_PRECARGA_SEGUNDOS)
+    iniciar_precarga_periodica("actividad-mensual", _precargar_actividad_mensual, _INTERVALO_PRECARGA_SEGUNDOS)
+    iniciar_precarga_periodica("historico", _precargar_historico, _INTERVALO_PRECARGA_SEGUNDOS)
     yield
 
 
@@ -153,6 +181,7 @@ app.include_router(zonas_router, prefix="/api/zonas", dependencies=_protegida)
 app.include_router(irregularidades_router, prefix="/api/irregularidades", dependencies=_protegida)
 app.include_router(incidentes_router, prefix="/api/incidentes", dependencies=_protegida)
 app.include_router(reportes_router, prefix="/api/reportes", dependencies=_protegida)
+app.include_router(actividad_router, prefix="/api/actividad", dependencies=_protegida)
 app.include_router(auditoria_router, prefix="/api/auditoria", dependencies=_protegida)
 
 

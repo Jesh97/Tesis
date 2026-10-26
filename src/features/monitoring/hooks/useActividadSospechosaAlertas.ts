@@ -8,7 +8,14 @@ export interface ActividadSospechosa {
   lat: number
   lon: number
   apagonAis: { detectado: true; diasSinSenal: number; probabilidad: number } | null
-  demoraPuerto: { detectado: true; diasLejosDePuerto: number; probabilidad: number } | null
+  /** Días seguidos sin tocar puerto ni desembarcadero (regla) o detector
+   * entrenado; `alMenos`: no se lo vio en puerto en toda la racha observada. */
+  demoraPuerto: { detectado: true; diasLejosDePuerto: number; alMenos: boolean; porRegla: boolean; probabilidad: number } | null
+  /** Pesca aparente dentro de las 5 mn de la costa continental (regla) o
+   * detector entrenado "zona_protegida". */
+  reservaArtesanal: { detectado: true; diasPescando: number; distCostaMinNm: number | null; porRegla: boolean; probabilidad: number } | null
+  /** Pesca aparente junto a las islas Lobos de Tierra / Lobos de Afuera (RNSIIPG). */
+  islasProtegidas: { detectado: true; diasPescando: number; distIslaMinNm: number } | null
   cruceFronteraZee: {
     detectado: true
     distCostaAntesNm: number
@@ -33,10 +40,10 @@ interface ActividadResponse {
 }
 
 /**
- * Embarcaciones marcadas por los detectores entrenados "apagon_ais" y
- * "demora_puerto" (server/app/modelo.py), alimentados con features
- * reconstruidas desde datos en vivo de GFW. Ver server/app/features.py para
- * el detalle de qué se pudo y no se pudo reconstruir fielmente.
+ * Embarcaciones con apagón de AIS, demora en puerto, pesca en la reserva de
+ * 5 mn o junto a las islas Lobos, a partir de features reconstruidas desde
+ * datos en vivo de GFW. Cada patrón combina una regla con el detector
+ * entrenado -- ver server/app/deteccion.py.
  */
 export function useActividadSospechosaAlertas() {
   const [zonas, setZonas] = useState<ZonaConActividad[]>([])

@@ -39,9 +39,9 @@ function toLonLat([lat, lon]: [number, number]): [number, number] {
 
 const coastlineLine = turf.lineString(LAMBAYEQUE_COASTLINE.map(toLonLat))
 
-function fiveMileZonePositions(): [number, number][][] {
+function franjaCosteraPositions(millas: number): [number, number][][] {
   const jurisdictionPolygon = turf.polygon([[...jurisdiction, jurisdiction[0]].map(toLonLat)])
-  const buffered = turf.buffer(coastlineLine, 5, { units: 'nauticalmiles' })
+  const buffered = turf.buffer(coastlineLine, millas, { units: 'nauticalmiles' })
   const clipped = buffered && turf.intersect(turf.featureCollection([buffered, jurisdictionPolygon]))
   if (!clipped) return []
 
@@ -49,7 +49,23 @@ function fiveMileZonePositions(): [number, number][][] {
   return rings.map((polygonCoords) => polygonCoords[0].map(([lon, lat]) => [lat, lon] as [number, number]))
 }
 
-const fiveMileZone = fiveMileZonePositions()
+const fiveMileZone = franjaCosteraPositions(5)
+
+// Zona de una veda: franja de `millas` (o toda la jurisdicción) recortada a
+// los paralelos [norte, sur] que fija la norma.
+function areaVedaPositions(millas?: number, latitudes?: [number, number]): [number, number][][] {
+  const anillos = millas === undefined ? [jurisdiction] : franjaCosteraPositions(millas)
+  if (!latitudes) return anillos
+
+  const [norte, sur] = latitudes
+  const banda = turf.bboxPolygon([-90, sur, -70, norte])
+  return anillos.flatMap((anillo) => {
+    const recorte = turf.intersect(turf.featureCollection([turf.polygon([[...anillo, anillo[0]].map(toLonLat)]), banda]))
+    if (!recorte) return []
+    const rings = recorte.geometry.type === 'Polygon' ? [recorte.geometry.coordinates] : recorte.geometry.coordinates
+    return rings.map((coords) => coords[0].map(([lon, lat]) => [lat, lon] as [number, number]))
+  })
+}
 
 // Límite de la Zona Económica Exclusiva peruana (200mn desde la costa). El
 // margen es el mismo que MARGEN_FRONTERA_ZEE_NM en server/app/features.py:
@@ -147,13 +163,20 @@ interface VesselMarkerProps {
   vessel: LambayequeVessel & { distCostaNm: number }
   conIncidente: boolean
   cercaFronteraZee: boolean
+  distinguirPesca: boolean
 }
+
+// Vista "Histórico": además de los pesqueros, el mapa trae TODO buque con
+// AIS en la zona (mercantes en tránsito, apoyo...). Los que no tuvieron pesca
+// aparente van en gris para que no se confundan con la flota que pescó.
+const COLOR_EMBARCACION = '#0f766e'
+const COLOR_SIN_PESCA = '#94a3b8'
 
 /** Componente aparte (no inline en el .map de MapView) porque necesita su
  * propio estado de React para la consulta bajo demanda del último puerto --
  * no tendría sentido pedirla para los ~1000+ barcos de la flota de una, así
  * que se dispara recién al hacer click en ESTE marcador puntual. */
-function VesselMarker({ vessel, conIncidente, cercaFronteraZee }: VesselMarkerProps) {
+function VesselMarker({ vessel, conIncidente, cercaFronteraZee, distinguirPesca }: VesselMarkerProps) {
   const [ultimoPuerto, setUltimoPuerto] = useState<EstadoUltimoPuerto>(null)
 
   async function cargarUltimoPuerto() {
@@ -169,7 +192,13 @@ function VesselMarker({ vessel, conIncidente, cercaFronteraZee }: VesselMarkerPr
     }
   }
 
-  const color = conIncidente ? '#dc2626' : cercaFronteraZee ? '#7c3aed' : '#0f766e'
+  const color = conIncidente
+    ? '#dc2626'
+    : cercaFronteraZee
+      ? '#7c3aed'
+      : distinguirPesca && vessel.horas <= 0
+        ? COLOR_SIN_PESCA
+        : COLOR_EMBARCACION
 
   return (
     <CircleMarker
@@ -252,6 +281,16 @@ interface ZonaCritica {
   poligono: { type: 'Polygon'; coordinates: number[][][] }
 }
 
+/** Área en veda a dibujar (vista Histórico): toda la jurisdicción, o solo la
+ * franja de `millas` desde la costa, opcionalmente entre los paralelos
+ * `latitudes` ([norte, sur]). */
+export interface ZonaVeda {
+  etiqueta: string
+  color: string
+  millas?: number
+  latitudes?: [number, number]
+}
+
 interface MapViewProps {
   vessels?: LambayequeVessel[]
   mmsiConIncidente?: Set<string>
@@ -267,6 +306,14 @@ interface MapViewProps {
    * ese mmsi (el array "vessels" trae una fila por día/celda de GFW, no una
    * por embarcación). */
   alertaPosicion?: { lat: number; lon: number; vessel: string; mmsi: string | null } | null
+  /** Pinta en gris los barcos sin pesca aparente (horas = 0) -- ver
+   * COLOR_SIN_PESCA. Monitoreo no lo usa: ahí todos los barcos vienen del
+   * dataset de esfuerzo pesquero, así que todos pescaron. */
+  distinguirPesca?: boolean
+  /** Centro y zoom con los que arranca el mapa (por defecto, todo el litoral
+   * peruano -- ver mapCenter/mapZoom). */
+  vistaInicial?: { centro: [number, number]; zoom: number }
+  zonasVeda?: ZonaVeda[]
   children?: ReactNode
 }
 
@@ -274,7 +321,32 @@ function poligonoAPosiciones(poligono: ZonaCritica['poligono']): [number, number
   return poligono.coordinates.map((anillo) => anillo.map(([lon, lat]) => [lat, lon] as [number, number]))
 }
 
-export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], alertaPosicion, children }: MapViewProps) {
+export function MapView({
+  vessels = [],
+  mmsiConIncidente,
+  zonasCriticas = [],
+  alertaPosicion,
+  distinguirPesca = false,
+  vistaInicial = { centro: mapCenter, zoom: mapZoom },
+  zonasVeda = [],
+  children,
+}: MapViewProps) {
+  // Vedas con la misma área (p.ej. anchoveta y perico en toda la
+  // jurisdicción) se dibujan como un solo polígono con ambas en el tooltip:
+  // dos polígonos idénticos encimados solo mostrarían el tooltip del de arriba.
+  const areasVeda = useMemo(() => {
+    const porArea = new Map<string, ZonaVeda[]>()
+    for (const zona of zonasVeda) {
+      const clave = `${zona.millas ?? 'todo'}|${zona.latitudes?.join(',') ?? 'todo'}`
+      porArea.set(clave, [...(porArea.get(clave) ?? []), zona])
+    }
+    return [...porArea.entries()]
+      .map(([clave, zonas]) => ({ clave, zonas, millas: zonas[0].millas, latitudes: zonas[0].latitudes }))
+      // Primero la más grande, para que las franjas costeras queden encima.
+      .sort((a, b) => (b.millas ?? Infinity) - (a.millas ?? Infinity))
+      .map((area) => ({ ...area, anillos: areaVedaPositions(area.millas, area.latitudes) }))
+  }, [zonasVeda])
+
   // Se calcula una sola vez por cambio de "vessels" (no en cada render): con
   // muchos barcos, turf.pointToLineDistance por marcador en cada render sí
   // se nota.
@@ -286,8 +358,8 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
   return (
     <div className="relative h-full w-full overflow-hidden">
       <MapContainer
-        center={mapCenter}
-        zoom={mapZoom}
+        center={vistaInicial.centro}
+        zoom={vistaInicial.zoom}
         zoomControl={false}
         preferCanvas
         className="h-full w-full"
@@ -301,6 +373,20 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
           positions={jurisdiction}
           pathOptions={{ color: '#0369a1', weight: 1.5, dashArray: '4 4', fillColor: '#38bdf8', fillOpacity: 0.08 }}
         />
+
+        {/* Sin tooltip y no interactivo: un tooltip "sticky" sobre toda la
+            zona tapaba los barcos que están adentro (que es justo lo que se
+            quiere revisar). El detalle de la veda está en el panel de la página. */}
+        {areasVeda.map(({ clave, zonas, anillos }) =>
+          anillos.map((anillo, index) => (
+            <Polygon
+              key={`veda-${clave}-${index}`}
+              positions={anillo}
+              interactive={false}
+              pathOptions={{ color: zonas[0].color, weight: 2, dashArray: '2 6', fillColor: zonas[0].color, fillOpacity: 0.14 }}
+            />
+          )),
+        )}
 
         {fiveMileZone.map((ring, index) => (
           <Polygon
@@ -339,6 +425,7 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
               vessel={vessel}
               conIncidente={conIncidente}
               cercaFronteraZee={cercaFronteraZee}
+              distinguirPesca={distinguirPesca}
             />
           )
         })}
@@ -392,8 +479,14 @@ export function MapView({ vessels = [], mmsiConIncidente, zonasCriticas = [], al
         <div className="absolute bottom-4 left-4 z-[1000] rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-[#0f766e]" />
-            Embarcación
+            {distinguirPesca ? 'Con pesca aparente' : 'Embarcación'}
           </div>
+          {distinguirPesca && (
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#94a3b8]" />
+              Sin pesca (tránsito, apoyo, otros)
+            </div>
+          )}
           <div className="mt-1 flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-[#7c3aed]" />
             Cerca del límite de las 200mn (ZEE)

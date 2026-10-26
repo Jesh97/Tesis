@@ -770,6 +770,25 @@ BEGIN
 END;
 $$;
 
+-- Vista "Tendencias": mismo conteo que vw_incidentes_por_mes, pero para un
+-- rango de meses arbitrario (p_desde y p_hasta se truncan al primer día del
+-- mes; p_hasta es inclusivo). Solo devuelve los meses con al menos un
+-- incidente, igual que la vista -- el frontend completa los ceros.
+CREATE OR REPLACE FUNCTION sp_reportes_incidentes_por_mes_rango(p_desde date, p_hasta date)
+RETURNS TABLE (mes date, total bigint)
+SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT date_trunc('month', i.fecha_deteccion)::date AS mes, count(*) AS total
+  FROM incidentes i
+  WHERE i.fecha_deteccion >= date_trunc('month', p_desde)
+    AND i.fecha_deteccion < date_trunc('month', p_hasta) + interval '1 month'
+  GROUP BY 1
+  ORDER BY 1;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION sp_reportes_tipos_infraccion()
 RETURNS TABLE (nombre varchar, color_indicador color_indicador, total bigint, porcentaje numeric)
 SECURITY DEFINER SET search_path = public
