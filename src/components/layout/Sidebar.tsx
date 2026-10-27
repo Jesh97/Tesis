@@ -14,6 +14,7 @@ import {
   MapPinIcon,
   RssIcon,
   TrendingUpIcon,
+  UserIcon,
 } from '../icons'
 
 interface NavItem {
@@ -35,12 +36,14 @@ const navItems: NavItem[] = [
 // GET /api/auditoria exige rol "administrador" (server/app/routes/auditoria.py)
 // -- no tiene sentido mostrar el link a quien de todas formas va a recibir un 403.
 const ITEM_AUDITORIA: NavItem = { label: 'Auditoría', to: '/auditoria', icon: <HistoryIcon className="h-4 w-4" /> }
+// Alta de supervisores/analistas: también solo administrador (server/app/routes/usuarios.py).
+const ITEM_USUARIOS: NavItem = { label: 'Usuarios', to: '/usuarios', icon: <UserIcon className="h-4 w-4" /> }
 
 export function Sidebar() {
   const navigate = useNavigate()
   const [mostrarReportar, setMostrarReportar] = useState(false)
   const esAdministrador = obtenerSesion()?.rol === 'administrador'
-  const items = esAdministrador ? [...navItems, ITEM_AUDITORIA] : navItems
+  const items = esAdministrador ? [...navItems, ITEM_AUDITORIA, ITEM_USUARIOS] : navItems
 
   function handleLogout() {
     cerrarSesion()

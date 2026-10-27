@@ -40,6 +40,7 @@ from .routes.irregularidades import (
 )
 from .routes.reportes import router as reportes_router
 from .routes.sugerencias import router as sugerencias_router
+from .routes.usuarios import router as usuarios_router
 from .routes.zonas import router as zonas_router
 from .rate_limit import RateLimitMiddleware
 
@@ -183,6 +184,7 @@ app.include_router(incidentes_router, prefix="/api/incidentes", dependencies=_pr
 app.include_router(reportes_router, prefix="/api/reportes", dependencies=_protegida)
 app.include_router(actividad_router, prefix="/api/actividad", dependencies=_protegida)
 app.include_router(auditoria_router, prefix="/api/auditoria", dependencies=_protegida)
+app.include_router(usuarios_router, prefix="/api/usuarios", dependencies=_protegida)
 
 
 if __name__ == "__main__":

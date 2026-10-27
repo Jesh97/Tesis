@@ -38,6 +38,10 @@ REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION
   sp_usuarios_buscar_para_login(varchar),
   sp_usuarios_marcar_acceso(uuid),
+  sp_usuarios_listar(),
+  sp_usuarios_crear(varchar, text, varchar, rol_usuario, uuid),
+  sp_usuarios_cambiar_password(uuid, text, uuid),
+  sp_usuarios_cambiar_estado(uuid, boolean, uuid),
   sp_incidentes_listar(date, date, tipo_embarcacion, gravedad_incidente),
   sp_incidentes_mmsi_con_incidente(),
   sp_incidentes_mmsi_reportados(),

@@ -147,3 +147,92 @@ def test_analizar_fuentes_supera_el_limite_devuelve_400():
     resp = client.post("/api/fuentes/analizar", headers=_AUTH, json={"urls": [f"https://x.com/{i}" for i in range(11)]})
     assert resp.status_code == 400
     assert "Máximo" in resp.json()["error"]
+
+
+# --- usuarios ------------------------------------------------------------
+
+_TOKEN_ADMIN = crear_token({"id": "00000000-0000-0000-0000-000000000001", "usuario": "admin", "rol": "administrador"})
+_AUTH_ADMIN = {"Authorization": f"Bearer {_TOKEN_ADMIN}"}
+_NUEVO_USUARIO = {"usuario": "J.Perez", "nombreCompleto": "Juan Pérez", "password": "clave-segura", "rol": "analista"}
+
+
+def test_listar_usuarios_exige_administrador():
+    resp = client.get("/api/usuarios", headers=_AUTH)  # _AUTH: rol "analista"
+    assert resp.status_code == 403
+
+
+def test_crear_usuario_exige_administrador():
+    resp = client.post("/api/usuarios", headers=_AUTH, json=_NUEVO_USUARIO)
+    assert resp.status_code == 403
+
+
+def test_crear_usuario_no_permite_rol_administrador():
+    resp = client.post("/api/usuarios", headers=_AUTH_ADMIN, json={**_NUEVO_USUARIO, "rol": "administrador"})
+    assert resp.status_code == 400
+
+
+def test_crear_usuario_rechaza_password_corta():
+    resp = client.post("/api/usuarios", headers=_AUTH_ADMIN, json={**_NUEVO_USUARIO, "password": "corta"})
+    assert resp.status_code == 400
+
+
+def test_crear_usuario_guarda_hash_y_no_la_password(monkeypatch):
+    import bcrypt
+
+    creado = {"id": "u1", "usuario": "j.perez", "nombre_completo": "Juan Pérez", "rol": "analista"}
+    cursor, fake = _cursor_falso(fetchone=creado)
+    monkeypatch.setattr("app.routes.usuarios.get_cursor", fake)
+    resp = client.post("/api/usuarios", headers=_AUTH_ADMIN, json=_NUEVO_USUARIO)
+    assert resp.status_code == 201
+    assert resp.json() == creado
+    _sql, params = cursor.llamadas[0]
+    usuario, password_hash, nombre, rol, creado_por = params
+    assert usuario == "j.perez"
+    assert password_hash != "clave-segura"
+    assert bcrypt.checkpw(b"clave-segura", password_hash.encode())
+    assert (nombre, rol) == ("Juan Pérez", "analista")
+    assert creado_por == "00000000-0000-0000-0000-000000000001"
+
+
+_ID_USUARIO = "00000000-0000-0000-0000-000000000009"
+
+
+def test_cambiar_password_exige_administrador():
+    resp = client.post(f"/api/usuarios/{_ID_USUARIO}/password", headers=_AUTH, json={"password": "otra-clave-1"})
+    assert resp.status_code == 403
+
+
+def test_cambiar_password_guarda_hash(monkeypatch):
+    import bcrypt
+
+    cursor, fake = _cursor_falso()
+    monkeypatch.setattr("app.routes.usuarios.get_cursor", fake)
+    resp = client.post(f"/api/usuarios/{_ID_USUARIO}/password", headers=_AUTH_ADMIN, json={"password": "otra-clave-1"})
+    assert resp.status_code == 204
+    _sql, (usuario_id, password_hash, admin_id) = cursor.llamadas[0]
+    assert usuario_id == _ID_USUARIO
+    assert bcrypt.checkpw(b"otra-clave-1", password_hash.encode())
+    assert admin_id == "00000000-0000-0000-0000-000000000001"
+
+
+def test_cambiar_password_rechaza_password_corta():
+    resp = client.post(f"/api/usuarios/{_ID_USUARIO}/password", headers=_AUTH_ADMIN, json={"password": "corta"})
+    assert resp.status_code == 400
+
+
+def test_deshabilitar_usuario_exige_administrador():
+    resp = client.post(f"/api/usuarios/{_ID_USUARIO}/estado", headers=_AUTH, json={"activo": False})
+    assert resp.status_code == 403
+
+
+def test_deshabilitar_usuario(monkeypatch):
+    cursor, fake = _cursor_falso()
+    monkeypatch.setattr("app.routes.usuarios.get_cursor", fake)
+    resp = client.post(f"/api/usuarios/{_ID_USUARIO}/estado", headers=_AUTH_ADMIN, json={"activo": False})
+    assert resp.status_code == 204
+    assert cursor.llamadas[0][1] == (_ID_USUARIO, False, "00000000-0000-0000-0000-000000000001")
+
+
+def test_cambiar_estado_sin_booleano_devuelve_400():
+    resp = client.post(f"/api/usuarios/{_ID_USUARIO}/estado", headers=_AUTH_ADMIN, json={"activo": "no"})
+    assert resp.status_code == 400

@@ -11,6 +11,10 @@ const ETIQUETA_ACCION: Record<string, { label: string; variant: 'green' | 'amber
   sugerencia_aprobada: { label: 'Sugerencia aprobada', variant: 'green' },
   sugerencia_rechazada: { label: 'Sugerencia rechazada', variant: 'red' },
   fuente_analisis_iniciado: { label: 'Análisis de noticia iniciado', variant: 'gray' },
+  usuario_creado: { label: 'Usuario creado', variant: 'gray' },
+  usuario_password_cambiada: { label: 'Contraseña cambiada', variant: 'amber' },
+  usuario_deshabilitado: { label: 'Usuario deshabilitado', variant: 'red' },
+  usuario_habilitado: { label: 'Usuario habilitado', variant: 'green' },
 }
 
 function formatearFecha(iso: string): string {

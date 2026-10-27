@@ -9,6 +9,7 @@ import { NewsPage } from './features/news/pages/NewsPage'
 import { ReportsPage } from './features/reports/pages/ReportsPage'
 import { HistoricoPage } from './features/trends/pages/HistoricoPage'
 import { TrendsPage } from './features/trends/pages/TrendsPage'
+import { UsersPage } from './features/users/pages/UsersPage'
 import { ZonesPage } from './features/zones/pages/ZonesPage'
 import { obtenerSesion } from './lib/session'
 
@@ -38,6 +39,7 @@ function App() {
         <Route path="/tendencias" element={<RequireAuth><TrendsPage /></RequireAuth>} />
         <Route path="/zonas" element={<RequireAuth><ZonesPage /></RequireAuth>} />
         <Route path="/auditoria" element={<RequireAuth><RequireAdmin><AuditLogPage /></RequireAdmin></RequireAuth>} />
+        <Route path="/usuarios" element={<RequireAuth><RequireAdmin><UsersPage /></RequireAdmin></RequireAuth>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ErrorBoundary>

@@ -57,6 +57,130 @@ BEGIN
 END;
 $$;
 
+-- Gestión de usuarios (GET/POST /api/usuarios, solo administrador -- ver
+-- server/app/routes/usuarios.py). Nunca devuelve password_hash.
+CREATE OR REPLACE FUNCTION sp_usuarios_listar()
+RETURNS TABLE (
+  id uuid,
+  usuario varchar,
+  nombre_completo varchar,
+  rol rol_usuario,
+  activo boolean,
+  ultimo_acceso timestamptz,
+  creado_en timestamptz
+)
+SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT u.id, u.usuario, u.nombre_completo, u.rol, u.activo, u.ultimo_acceso, u.creado_en
+  FROM usuarios u ORDER BY u.creado_en DESC;
+END;
+$$;
+
+-- El administrador solo puede crear usuarios de menor rango (supervisor o
+-- analista). La ruta ya lo valida, pero se repite acá para que no dependa
+-- solo del backend: ni con las credenciales de app_runtime se puede dar de
+-- alta otro administrador por esta vía.
+CREATE OR REPLACE FUNCTION sp_usuarios_crear(
+  p_usuario varchar,
+  p_password_hash text,
+  p_nombre_completo varchar,
+  p_rol rol_usuario,
+  p_usuario_id uuid DEFAULT NULL
+)
+RETURNS TABLE (
+  id uuid,
+  usuario varchar,
+  nombre_completo varchar,
+  rol rol_usuario,
+  activo boolean,
+  ultimo_acceso timestamptz,
+  creado_en timestamptz
+)
+SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  IF p_rol = 'administrador' THEN
+    RAISE EXCEPTION '403|Solo se pueden crear usuarios con rol supervisor o analista';
+  END IF;
+
+  BEGIN
+    INSERT INTO usuarios (usuario, password_hash, nombre_completo, rol)
+    VALUES (p_usuario, p_password_hash, p_nombre_completo, p_rol)
+    RETURNING usuarios.id INTO v_id;
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION '409|Ya existe un usuario con ese nombre de usuario';
+  END;
+
+  PERFORM sp_auditoria_registrar(
+    p_usuario_id, 'usuario_creado', 'usuario', v_id::varchar,
+    jsonb_build_object('usuario', p_usuario, 'rol', p_rol)
+  );
+
+  RETURN QUERY
+  SELECT u.id, u.usuario, u.nombre_completo, u.rol, u.activo, u.ultimo_acceso, u.creado_en
+  FROM usuarios u WHERE u.id = v_id;
+END;
+$$;
+
+-- Igual que en sp_usuarios_crear: el administrador solo gestiona cuentas de
+-- menor rango, así que estas dos funciones se niegan a tocar a otro
+-- administrador (ni a sí mismo).
+CREATE OR REPLACE FUNCTION sp_usuarios_cambiar_password(p_id uuid, p_password_hash text, p_usuario_id uuid DEFAULT NULL)
+RETURNS void
+SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_usuario varchar;
+  v_rol rol_usuario;
+BEGIN
+  SELECT u.usuario, u.rol INTO v_usuario, v_rol FROM usuarios u WHERE u.id = p_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION '404|Usuario no encontrado';
+  END IF;
+  IF v_rol = 'administrador' THEN
+    RAISE EXCEPTION '403|No se puede modificar a un administrador';
+  END IF;
+
+  UPDATE usuarios SET password_hash = p_password_hash WHERE id = p_id;
+
+  PERFORM sp_auditoria_registrar(
+    p_usuario_id, 'usuario_password_cambiada', 'usuario', p_id::varchar,
+    jsonb_build_object('usuario', v_usuario)
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION sp_usuarios_cambiar_estado(p_id uuid, p_activo boolean, p_usuario_id uuid DEFAULT NULL)
+RETURNS void
+SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_usuario varchar;
+  v_rol rol_usuario;
+BEGIN
+  SELECT u.usuario, u.rol INTO v_usuario, v_rol FROM usuarios u WHERE u.id = p_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION '404|Usuario no encontrado';
+  END IF;
+  IF v_rol = 'administrador' THEN
+    RAISE EXCEPTION '403|No se puede modificar a un administrador';
+  END IF;
+
+  UPDATE usuarios SET activo = p_activo WHERE id = p_id;
+
+  PERFORM sp_auditoria_registrar(
+    p_usuario_id,
+    CASE WHEN p_activo THEN 'usuario_habilitado' ELSE 'usuario_deshabilitado' END,
+    'usuario', p_id::varchar,
+    jsonb_build_object('usuario', v_usuario)
+  );
+END;
+$$;
+
 -- =========================================================
 -- Incidentes
 -- =========================================================
